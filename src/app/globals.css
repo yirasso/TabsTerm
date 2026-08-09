@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. The visual pass (Claude Design) should edit these values —
+ * components reference the token names, not raw colours.
+ */
+@theme {
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-term-bg: oklch(0.15 0.01 240);
+  --color-term-surface: oklch(0.19 0.012 240);
+  --color-term-border: oklch(0.3 0.015 240);
+  --color-term-fg: oklch(0.92 0.01 240);
+  --color-term-muted: oklch(0.62 0.015 240);
+  --color-term-accent: oklch(0.82 0.19 145);
+  --color-term-accent-dim: oklch(0.55 0.13 145);
+  --color-term-warn: oklch(0.83 0.16 85);
+  --color-term-error: oklch(0.68 0.2 25);
+
+  --radius-term: 0.125rem;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: var(--color-term-bg);
+  color: var(--color-term-fg);
+}
+
+body {
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ASCII tablature must never reflow — it is a fixed-width grid. */
+.tab-content {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  white-space: pre;
+  tab-size: 4;
+  overflow-x: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::selection {
+  background: var(--color-term-accent-dim);
+  color: var(--color-term-bg);
+}
