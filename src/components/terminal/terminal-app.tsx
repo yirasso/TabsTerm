@@ -4,13 +4,15 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
 import { CapabilityBadge } from "@/components/tab/capability-badge";
 import type { Quote } from "@/data/quotes";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSongSearch } from "@/hooks/use-song-search";
+import { slugify } from "@/lib/utils";
 import { CAPABILITY_LABEL, type SongSummary } from "@/server/tabs/types";
+import { DRAFT_PROVIDER, draftToSummary, useDrafts } from "@/stores/drafts";
 import { usePrefs } from "@/stores/prefs";
 import { type FavEntry, useSession } from "@/stores/session";
 import { anyModalOpen, useUi } from "@/stores/ui";
@@ -27,8 +29,9 @@ function noResultsText(term: string) {
   return `no match in index for "${term}"
 
   · check the spelling, or drop the artist name
-  · sources: the in-repo library and songsterr
-  · try one of: greensleeves · scarborough fair · ode to joy · house of the rising sun`;
+  · nothing here is scraped, so the library is only what has been written
+  · try: greensleeves · scarborough fair · ode to joy · amazing grace
+  · or write it yourself with /new`;
 }
 
 export function TerminalApp({ providers = [], quote }: { providers?: string[]; quote?: Quote }) {
@@ -58,7 +61,22 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
   const cmd = parseCommand(query);
   const isCmd = query.trim().startsWith("/");
 
-  const filteredResults = data?.results ?? [];
+  // Drafts are in localStorage, so the server knows nothing about them. Merge
+  // the published ones in here, ahead of the catalog — someone searching for a
+  // tab they just wrote should find it first.
+  const drafts = useDrafts((s) => s.drafts);
+  const draftHits = useMemo(() => {
+    const needle = slugify(term);
+    if (!needle) return [];
+    return Object.values(drafts)
+      .filter((d) => d.published && slugify(`${d.title} ${d.artist}`).includes(needle))
+      .map(draftToSummary);
+  }, [drafts, term]);
+
+  const filteredResults = useMemo(
+    () => [...draftHits, ...(data?.results ?? [])],
+    [draftHits, data],
+  );
   const degraded = data?.degraded ?? [];
 
   // What the area under the prompt shows: the day's quote when nothing is
@@ -93,6 +111,10 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
   };
 
   const songHref = (s: Pick<SongSummary, "provider" | "id">, from: Screen) => {
+    // Drafts live in this browser, so they get a client-rendered route of their
+    // own rather than one the server would fail to resolve.
+    if (s.provider === DRAFT_PROVIDER) return `/draft/${encodeURIComponent(s.id)}` as Route;
+
     const qs = new URLSearchParams();
     if (query) qs.set("q", query);
     if (from !== "home") qs.set("view", from);
@@ -120,6 +142,7 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
     if (c.cmd === "/auth") return openAuth();
     if (c.cmd === "/man") return openAbout();
     if (c.cmd === "/random") return router.push(randomHref(provider));
+    if (c.cmd === "/new") return router.push("/new" as Route);
     if (c.cmd === "/src") {
       const wanted = c.arg.toLowerCase();
       if (wanted === SOURCE_ALL) return applySource(SOURCE_ALL);

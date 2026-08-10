@@ -1,0 +1,132 @@
+import { describe, expect, it } from "vitest";
+import { alignStaves, blankStave, insertAt, staveLabels, validateTab } from "./edit";
+
+describe("staveLabels", () => {
+  it("uses standard labels when no tuning is declared", () => {
+    expect(staveLabels(null)).toEqual(["e", "B", "G", "D", "A", "E"]);
+  });
+
+  it("reverses a declared tuning, since staves read high string first", () => {
+    expect(staveLabels(["D", "A", "D", "G", "B", "E"])).toEqual(["e", "B", "G", "D", "A", "D"]);
+  });
+
+  it("falls back when the tuning has the wrong number of strings", () => {
+    expect(staveLabels(["E", "A", "D"])).toEqual(["e", "B", "G", "D", "A", "E"]);
+  });
+
+  it("knows a four-string stave is a bass", () => {
+    expect(staveLabels(null, 4)).toEqual(["G", "D", "A", "E"]);
+  });
+});
+
+describe("blankStave", () => {
+  it("produces one line per string, all the same length", () => {
+    const lines = blankStave().split("\n");
+    expect(lines).toHaveLength(6);
+    expect(new Set(lines.map((l) => l.length)).size).toBe(1);
+  });
+
+  it("starts each line with its string label and a bar", () => {
+    expect(blankStave().split("\n")[0]).toMatch(/^e\|/);
+  });
+});
+
+describe("alignStaves", () => {
+  it("pads short lines to the longest in the same stave", () => {
+    const ragged = `e|--0--|
+B|--1|
+G|--0--|
+D|--2--|
+A|--3--|
+E|-----|`;
+    const lines = alignStaves(ragged).split("\n");
+    expect(new Set(lines.map((l) => l.length)).size).toBe(1);
+  });
+
+  it("pads before a trailing bar, not after it", () => {
+    const ragged = `e|--0--|
+B|--1|
+G|--0--|
+D|--2--|
+A|--3--|
+E|-----|`;
+    expect(alignStaves(ragged).split("\n")[1]).toBe("B|--1--|");
+  });
+
+  it("leaves prose and labels untouched", () => {
+    const content = "[Intro]\nplay softly\n";
+    expect(alignStaves(content)).toBe(content);
+  });
+
+  it("aligns each stave independently", () => {
+    const two = `e|--0|
+B|--1--|
+G|-----|
+D|-----|
+A|-----|
+E|-----|
+
+e|--0--------|
+B|--1|
+G|-----------|
+D|-----------|
+A|-----------|
+E|-----------|`;
+    const [first = "", second = ""] = alignStaves(two).split("\n\n");
+    expect(new Set(first.split("\n").map((l) => l.length)).size).toBe(1);
+    expect(new Set(second.split("\n").map((l) => l.length)).size).toBe(1);
+    // The short stave must not have been stretched to the long one's width.
+    expect(first.split("\n")[0]?.length).toBeLessThan(second.split("\n")[0]?.length ?? 0);
+  });
+});
+
+describe("validateTab", () => {
+  it("says nothing about a well-formed tab", () => {
+    expect(validateTab(blankStave())).toEqual([]);
+  });
+
+  it("flags a stave whose lines are different lengths", () => {
+    const issues = validateTab(`e|--0--|
+B|--1|
+G|--0--|
+D|--2--|
+A|--3--|
+E|-----|`);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.message).toMatch(/align/);
+  });
+
+  it("flags a stave with too few strings", () => {
+    const issues = validateTab("e|--0--|\nB|--1--|");
+    expect(issues[0]?.message).toMatch(/at least 4/);
+  });
+
+  it("reports the line the stave starts on", () => {
+    const issues = validateTab(`[Intro]
+
+e|--0--|
+B|--1|
+G|--0--|
+D|--2--|
+A|--3--|
+E|-----|`);
+    expect(issues[0]?.line).toBe(3);
+  });
+});
+
+describe("insertAt", () => {
+  it("puts the insert on its own lines", () => {
+    const { value } = insertAt("hello", 5, "world");
+    expect(value).toBe("hello\nworld\n");
+  });
+
+  it("does not add blank lines that are already there", () => {
+    const { value } = insertAt("hello\n", 6, "world");
+    expect(value).toBe("hello\nworld\n");
+  });
+
+  it("reports a caret sitting after the insert", () => {
+    const { value, caret } = insertAt("ab", 2, "X");
+    expect(value.slice(0, caret)).toBe("ab\nX\n");
+  });
+});
