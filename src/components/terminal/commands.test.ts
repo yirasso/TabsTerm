@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { parseCommand, searchTermFor } from "./commands";
+import { parseCommand, randomHref, searchTermFor } from "./commands";
+
+describe("randomHref", () => {
+  it("is a bare link with no filter", () => {
+    expect(randomHref(null)).toBe("/random");
+  });
+
+  it("carries the active source so the pick respects it", () => {
+    expect(randomHref("local")).toBe("/random?src=local");
+  });
+
+  it("encodes the source", () => {
+    expect(randomHref("a b")).toBe("/random?src=a%20b");
+  });
+});
 
 describe("parseCommand", () => {
   it("splits a command and its argument", () => {

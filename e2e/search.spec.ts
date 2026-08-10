@@ -123,6 +123,26 @@ test("the idle prompt shows the day's quote, and typing replaces it", async ({ p
   await expect(fortune).toBeHidden();
 });
 
+test("/random opens some tab from the hosted library", async ({ page }) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+
+  await prompt.fill("/random");
+  await prompt.press("Enter");
+
+  await expect(page).toHaveURL(/\/song\/local\/[a-z-]+/);
+  await expect(page.locator(".tab-content").first()).toBeVisible();
+});
+
+test("/random says so when the narrowed source cannot be browsed", async ({ page }) => {
+  // songsterr is search-only, and this server has it disabled anyway — either
+  // way there is nothing to draw from, and that is a state, not a crash.
+  await page.goto("/random?src=songsterr");
+
+  await expect(page.getByText(/nothing to draw from/i)).toBeVisible();
+  await expect(page.getByRole("link", { name: /back to prompt/i })).toBeVisible();
+});
+
 test("the header carries no source chip", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("button", { name: /^src:/ })).toHaveCount(0);

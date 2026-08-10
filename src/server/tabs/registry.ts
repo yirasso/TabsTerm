@@ -76,3 +76,22 @@ export async function getTab(
   if (!provider) return null;
   return provider.getTab(id, signal);
 }
+
+/**
+ * A tab drawn from the sources that can enumerate themselves. Returns null when
+ * no such source is enabled — which is a real state, not an error: narrowing to
+ * a search-only source like Songsterr leaves nothing to draw from.
+ *
+ * The provider is picked uniformly rather than weighted by catalog size, so
+ * with several enumerable sources this favours the smaller ones. Worth
+ * revisiting only once there is more than one.
+ */
+export async function randomTab(options: SearchOptions = {}): Promise<Tab | null> {
+  const enabled = activeProviders();
+  const scoped = options.provider ? enabled.filter((p) => p.id === options.provider) : enabled;
+  const capable = scoped.filter((p) => typeof p.random === "function");
+
+  const provider = capable[Math.floor(Math.random() * capable.length)];
+  if (!provider?.random) return null;
+  return provider.random(options.signal);
+}

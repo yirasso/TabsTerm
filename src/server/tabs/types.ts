@@ -64,6 +64,12 @@ export interface TabProvider {
   readonly attribution?: string;
   search(query: string, signal?: AbortSignal): Promise<SongSummary[]>;
   getTab(id: string, signal?: AbortSignal): Promise<Tab | null>;
+  /**
+   * Optional. Only sources that can enumerate their own catalog can offer a
+   * random pick — a search-only upstream like Songsterr simply omits this, and
+   * `/random` skips it rather than guessing an id.
+   */
+  random?(signal?: AbortSignal): Promise<Tab | null>;
 }
 
 /** Stable cross-provider key: `songsterr:1234`. Used in URLs. */

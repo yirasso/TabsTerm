@@ -38,6 +38,12 @@ npm run check     # typecheck + biome + vitest
 - **The daily quote is picked on the server** (`src/data/quotes.ts` + `revalidate` on
   the home page), never client-side — computing it during render on both sides is a
   hydration mismatch waiting for midnight.
+- **A command that routes away must not clear the prompt.** `setQuery("")` writes the
+  URL through nuqs, and that write lands *after* a `router.push` and clobbers it back
+  to `/`. `LEAVES_PROMPT` in `src/components/terminal/commands.ts` is the list; add to
+  it when a new command navigates.
+- **`TabProvider.random` is optional by design.** Only sources that can enumerate
+  their catalog implement it; `randomTab` skips the rest instead of guessing ids.
 - **E2E runs with `TAB_PROVIDERS=local`** (set in `playwright.config.ts`) so it is
   deterministic and offline. Don't write e2e assertions against Songsterr results.
 

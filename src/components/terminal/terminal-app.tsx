@@ -14,7 +14,7 @@ import { CAPABILITY_LABEL, type SongSummary } from "@/server/tabs/types";
 import { usePrefs } from "@/stores/prefs";
 import { type FavEntry, useSession } from "@/stores/session";
 import { anyModalOpen, useUi } from "@/stores/ui";
-import { COMMANDS, parseCommand, searchTermFor } from "./commands";
+import { COMMANDS, LEAVES_PROMPT, parseCommand, randomHref, searchTermFor } from "./commands";
 import { type CycleState, nextCompletion, SOURCE_ALL } from "./completion";
 import { useGhostTyper } from "./use-ghost-typer";
 
@@ -119,6 +119,7 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
     if (c.cmd === "/theme") return cycle();
     if (c.cmd === "/auth") return openAuth();
     if (c.cmd === "/man") return openAbout();
+    if (c.cmd === "/random") return router.push(randomHref(provider));
     if (c.cmd === "/src") {
       const wanted = c.arg.toLowerCase();
       if (wanted === SOURCE_ALL) return applySource(SOURCE_ALL);
@@ -140,7 +141,7 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
       setTimeout(() => inputRef.current?.focus(), 30);
       return;
     }
-    setQuery("");
+    if (!LEAVES_PROMPT.has(name)) setQuery("");
     runCommand(name);
   };
 

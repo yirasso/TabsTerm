@@ -3,9 +3,10 @@
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { COMMANDS } from "@/components/terminal/commands";
+import { COMMANDS, randomHref } from "@/components/terminal/commands";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSongSearch } from "@/hooks/use-song-search";
+import { usePrefs } from "@/stores/prefs";
 import { useUi } from "@/stores/ui";
 import { useThemeCycle } from "./use-theme-cycle";
 
@@ -16,6 +17,7 @@ export function Palette() {
   const router = useRouter();
   const { closePalette, openAbout, openAuth, focusPrompt } = useUi();
   const { cycle } = useThemeCycle();
+  const provider = usePrefs((s) => s.provider);
 
   const [pQuery, setPQuery] = useState("");
   const [pSel, setPSel] = useState(0);
@@ -49,6 +51,7 @@ export function Palette() {
       return;
     }
     if (name === "/fav") router.push("/?view=favs" as Route);
+    else if (name === "/random") router.push(randomHref(provider));
     else if (name === "/theme") cycle();
     else if (name === "/auth") openAuth();
     else if (name === "/man") openAbout();

@@ -55,3 +55,30 @@ describe("localProvider", () => {
     expect(await localProvider.getTab("nope")).toBeNull();
   });
 });
+
+describe("localProvider.random", () => {
+  it("always returns a tab from its own library", async () => {
+    for (let i = 0; i < 20; i++) {
+      const tab = await localProvider.random?.();
+      expect(tab).not.toBeNull();
+      expect(await localProvider.getTab(tab?.id ?? "")).toEqual(tab);
+    }
+  });
+
+  it("never hands back something the reader cannot read", async () => {
+    for (let i = 0; i < 20; i++) {
+      const tab = await localProvider.random?.();
+      expect(tab?.externalOnly).toBe(false);
+      expect(tab?.content).toBeTruthy();
+    }
+  });
+
+  it("reaches more than one tab over repeated draws", async () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 60; i++) {
+      const tab = await localProvider.random?.();
+      if (tab) seen.add(tab.id);
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
+});

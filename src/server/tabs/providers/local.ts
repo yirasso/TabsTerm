@@ -54,4 +54,9 @@ export const localProvider: TabProvider = {
   async getTab(id: string): Promise<Tab | null> {
     return tabs.find((t) => t.id === id) ?? null;
   },
+
+  async random(): Promise<Tab | null> {
+    if (tabs.length === 0) return null;
+    return tabs[Math.floor(Math.random() * tabs.length)] ?? null;
+  },
 };

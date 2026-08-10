@@ -74,7 +74,8 @@ src/
 `esc` back · `⌘K` palette · on a tab: `space` play · `f` focus · `a` autoscroll ·
 `s` favorite · `t` theme (anywhere).
 
-Slash commands: `/tab`, `/artist`, `/src`, `/fav`, `/auth`, `/man`, `/theme`.
+Slash commands: `/tab`, `/artist`, `/random`, `/src`, `/fav`, `/auth`, `/man`,
+`/theme`.
 
 **Tab completion** works the way a shell's does, and lives in
 `src/components/terminal/completion.ts` as pure functions. `/art` + Tab finishes
@@ -90,6 +91,14 @@ the reader. While it is active the results header says `$ find "…" --src local
 It travels as `?provider=` on `/api/search`, and the registry can only *narrow*
 `TAB_PROVIDERS` with it — a client must never be able to switch on a source the
 operator turned off.
+
+**`/random`** draws a tab from the sources that can enumerate their own catalog.
+That is an optional `random()` on `TabProvider`: a search-only upstream like
+Songsterr simply omits it and gets skipped, rather than having an id guessed for
+it. The pick happens on the server behind the `/random` route, so it is also a
+plain shareable link, and it redirects (307) to the chosen song. Narrowing to a
+source that cannot be browsed renders an honest "nothing to draw from" page
+instead of failing.
 
 **The idle prompt shows the day's quote** (`$ fortune`), picked from
 `src/data/quotes.ts` by UTC day. It is chosen on the server and the home page is

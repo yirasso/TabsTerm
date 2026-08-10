@@ -1,9 +1,25 @@
+import type { Route } from "next";
+
 export type Command = { name: string; hint: string };
+
+/** The picking happens on the server, so /random is a plain shareable link. */
+export function randomHref(provider: string | null): Route {
+  return (provider ? `/random?src=${encodeURIComponent(provider)}` : "/random") as Route;
+}
+
+/**
+ * Commands that route to another page. The prompt must NOT be cleared for
+ * these: clearing writes the URL through nuqs, and that write lands after the
+ * router push and clobbers it back to `/`. The destination does not read `q`
+ * anyway, so leaving it alone is both correct and simpler.
+ */
+export const LEAVES_PROMPT = new Set(["/random"]);
 
 /** Slash commands surfaced in the prompt and the ⌘K palette. */
 export const COMMANDS: Command[] = [
   { name: "/tab <song>", hint: "open the matching tab" },
   { name: "/artist <name>", hint: "search by artist" },
+  { name: "/random", hint: "open a tab at random" },
   { name: "/src <name>", hint: "restrict search to one source" },
   { name: "/fav", hint: "list favorited tabs" },
   { name: "/auth", hint: "account: login or signup" },
@@ -17,7 +33,7 @@ export const GHOSTS = [
   "house of the rising sun",
   "/tab ode to joy",
   "scarborough fair",
-  "/src local",
+  "/random",
 ];
 
 const SEARCH_COMMANDS = ["/tab", "/artist"];
