@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
+    "@coderline/alphatab": "^1.8.4",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.0",
@@ -50,6 +51,7 @@
     "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^6.0.5",
     "babel-plugin-react-compiler": "^1.0.0",
+    "csv-parse": "^7.0.2",
     "jsdom": "^30.0.1",
     "tailwindcss": "^4",
     "typescript": "^5",
