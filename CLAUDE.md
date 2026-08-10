@@ -1,7 +1,8 @@
 # GTabsTerm — working notes
 
 Guitar tab search. Next.js 16 App Router, React 19 + React Compiler, Tailwind v4, Biome.
-See `README.md` for the full stack table and architecture.
+See `README.md` for the full stack table and architecture, and
+[docs/PLAN.md](docs/PLAN.md) for where the project is going and why.
 
 ## Before you finish a change
 
@@ -47,11 +48,24 @@ npm run check     # typecheck + biome + vitest
 - **E2E runs with `TAB_PROVIDERS=local`** (set in `playwright.config.ts`) so it is
   deterministic and offline. Don't write e2e assertions against Songsterr results.
 
+## Content sources — the rule that decides everything
+
+**Never copy tablature from another site, by any method.** A tab embodies someone
+else's composition; scraping it, or transcribing it by ear and publishing it, are the
+same thing legally. Content comes from three places only: users who write it under
+their own account, public-domain scores with per-row licence proof, and metadata-only
+links to sources that host their own (Songsterr). Audio analysis, when it lands, must
+run in the browser on audio the user supplies — the server never fetches or stores
+recordings. Reasoning and precedents in [docs/PLAN.md](docs/PLAN.md).
+
 ## Current state
 
 The UI implements the TabsTerm design imported from Claude Design ("TabsTerm –
 Plataforma de tabs", `TabsTerm.dc.html`): terminal prompt with ghost-typing, results/
-favs screens, tab view with playback bar, about/auth/⌘K modals, keyboard-first. The
-auth modal is a client-side mock by design; favorites are session-only in a zustand
-store. Motion/3D packages (`gsap`, `motion`, `lenis`, `three`, `@react-three/*`) remain
-installed but unused, so they cost nothing until needed.
+favs screens, tab view with playback bar, about/auth/⌘K modals, keyboard-first.
+
+What is still fake and scheduled to become real (see the plan): the auth modal is a
+client-side mock, favorites are session-only in a zustand store, and the playback bar
+runs a `setInterval` over text sections rather than producing sound. The library is 5
+hand-written tabs. Motion/3D packages (`gsap`, `motion`, `lenis`, `three`,
+`@react-three/*`) remain installed but unused, so they cost nothing until needed.
