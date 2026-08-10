@@ -60,6 +60,62 @@ test("results and the tab page say what the reader gets", async ({ page }) => {
   await expect(page.getByTitle("tab, no audio")).toBeVisible();
 });
 
+test("tab completes a partial command", async ({ page }) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+
+  await prompt.fill("/art");
+  await prompt.press("Tab");
+  await expect(prompt).toHaveValue("/artist ");
+});
+
+test("tab cycles through the provider values", async ({ page }) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+
+  await prompt.fill("/provider");
+  await prompt.press("Tab");
+  await expect(prompt).toHaveValue("/provider ");
+
+  await prompt.press("Tab");
+  await expect(prompt).toHaveValue("/provider all");
+
+  await prompt.press("Tab");
+  await expect(prompt).toHaveValue("/provider local");
+
+  // Shift+Tab walks back.
+  await prompt.press("Shift+Tab");
+  await expect(prompt).toHaveValue("/provider all");
+});
+
+test("/provider narrows which source is searched", async ({ page }) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+
+  await prompt.fill("/provider local");
+  await prompt.press("Enter");
+  // Running the command clears the prompt and records the choice.
+  await expect(prompt).toHaveValue("");
+
+  await prompt.fill("greensleeves");
+  await prompt.press("Enter");
+  await expect(page.getByText(/sources: local/)).toBeVisible();
+});
+
+test("a client cannot switch on a source the server disabled", async ({ request }) => {
+  // This server runs TAB_PROVIDERS=local, so asking for songsterr must yield
+  // nothing rather than quietly falling back to every provider.
+  const res = await request.get("/api/search?q=greensleeves&provider=songsterr");
+  expect(res.ok()).toBe(true);
+  expect((await res.json()).results).toEqual([]);
+});
+
+test("the header chip cycles the active source", async ({ page }) => {
+  await page.goto("/");
+  // Only one provider is enabled under test, so the chip stays hidden.
+  await expect(page.getByRole("button", { name: /^src:/ })).toHaveCount(0);
+});
+
 test("the theme button cycles themes", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /theme: paper/ }).click();

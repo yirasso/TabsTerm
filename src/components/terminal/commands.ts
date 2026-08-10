@@ -5,6 +5,7 @@ export const COMMANDS: Command[] = [
   { name: "/tab <song>", hint: "open the matching tab" },
   { name: "/chords <song>", hint: "chord sheets only" },
   { name: "/artist <name>", hint: "search by artist" },
+  { name: "/provider <name>", hint: "restrict search to one source" },
   { name: "/fav", hint: "list favorited tabs" },
   { name: "/login", hint: "account: login or signup" },
   { name: "/man", hint: "what tabsterm is" },
@@ -17,7 +18,7 @@ export const GHOSTS = [
   "house of the rising sun",
   "/tab ode to joy",
   "scarborough fair",
-  "/man",
+  "/provider local",
 ];
 
 const SEARCH_COMMANDS = ["/tab", "/chords", "/artist"];

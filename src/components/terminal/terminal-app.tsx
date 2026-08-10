@@ -10,9 +10,11 @@ import { CapabilityBadge } from "@/components/tab/capability-badge";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSongSearch } from "@/hooks/use-song-search";
 import { CAPABILITY_LABEL, type SongSummary } from "@/server/tabs/types";
+import { usePrefs } from "@/stores/prefs";
 import { type FavEntry, useSession } from "@/stores/session";
 import { anyModalOpen, useUi } from "@/stores/ui";
 import { COMMANDS, parseCommand, searchTermFor } from "./commands";
+import { type CycleState, nextCompletion, PROVIDER_ALL } from "./completion";
 import { useGhostTyper } from "./use-ghost-typer";
 
 const INTRO = `tabsterm — guitar tablature behind a text prompt.
@@ -28,7 +30,7 @@ function noResultsText(term: string) {
   · try one of: greensleeves · scarborough fair · ode to joy · house of the rising sun`;
 }
 
-export function TerminalApp() {
+export function TerminalApp({ providers = [] }: { providers?: string[] }) {
   const router = useRouter();
   const [query, setQuery] = useQueryState("q", { defaultValue: "", shallow: true });
   const [view, setView] = useQueryState("view", { shallow: true });
@@ -37,6 +39,7 @@ export function TerminalApp() {
   const [sel, setSel] = useState(0);
   const [selMoved, setSelMoved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cycleRef = useRef<CycleState>(null);
 
   const { openAbout, openAuth } = useUi();
   const promptFocusTick = useUi((s) => s.promptFocusTick);
@@ -44,6 +47,8 @@ export function TerminalApp() {
   const favs = useSession((s) => s.favs);
   const toggleFav = useSession((s) => s.toggleFav);
   const { cycle } = useThemeCycle();
+  const provider = usePrefs((s) => s.provider);
+  const setProvider = usePrefs((s) => s.setProvider);
 
   const debounced = useDebouncedValue(query, 250);
   const term = searchTermFor(debounced);
@@ -59,14 +64,32 @@ export function TerminalApp() {
     : searchResults;
   const degraded = data?.degraded ?? [];
 
-  // Home suggestions: commands when idle or typing "/", live search hits otherwise.
+  // Home suggestions: provider values while completing /provider, otherwise
+  // commands when idle or typing "/", otherwise live search hits.
   const trimmed = query.trim().toLowerCase();
-  const showCommands = isCmd || !trimmed;
+  const providerOptions =
+    cmd?.cmd === "/provider"
+      ? [PROVIDER_ALL, ...providers].filter((p) => p.startsWith(cmd.arg.toLowerCase()))
+      : [];
+  const showProviders = providerOptions.length > 0;
+  const showCommands = !showProviders && (isCmd || !trimmed);
   const commandSuggestions = !isCmd
     ? COMMANDS
     : COMMANDS.filter((c) => trimmed === "/" || c.name.startsWith(trimmed.split(" ")[0] ?? ""));
   const songSuggestions = filteredResults.slice(0, 6);
-  const listLength = showCommands ? commandSuggestions.length : songSuggestions.length;
+  const listLength = showProviders
+    ? providerOptions.length
+    : showCommands
+      ? commandSuggestions.length
+      : songSuggestions.length;
+
+  const applyProvider = (value: string) => {
+    setProvider(value === PROVIDER_ALL ? null : value);
+    setQuery("");
+    setSel(0);
+    setSelMoved(false);
+    setTimeout(() => inputRef.current?.focus(), 30);
+  };
 
   const songHref = (s: Pick<SongSummary, "provider" | "id">, from: Screen) => {
     const qs = new URLSearchParams();
@@ -95,6 +118,12 @@ export function TerminalApp() {
     if (c.cmd === "/theme") return cycle();
     if (c.cmd === "/login") return openAuth();
     if (c.cmd === "/man") return openAbout();
+    if (c.cmd === "/provider") {
+      const wanted = c.arg.toLowerCase();
+      if (wanted === PROVIDER_ALL) return applyProvider(PROVIDER_ALL);
+      if (providers.includes(wanted)) return applyProvider(wanted);
+      return;
+    }
     if (["/tab", "/chords", "/artist"].includes(c.cmd) && c.arg) {
       setView("results");
       setSel(0);
@@ -116,6 +145,11 @@ export function TerminalApp() {
 
   const submit = () => {
     if (!query.trim()) return;
+    if (showProviders) {
+      const pick = providerOptions[sel];
+      if (pick) applyProvider(pick);
+      return;
+    }
     if (isCmd) {
       const pick = commandSuggestions[sel];
       if (cmd?.arg || !pick) runCommand(query);
@@ -190,6 +224,20 @@ export function TerminalApp() {
   const promptLabel = `${user?.handle ?? "user"}@tabsterm:~$`;
 
   const onPromptKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Tab") {
+      // Tab belongs to the prompt here, not to focus navigation.
+      e.preventDefault();
+      const step = nextCompletion(query, cycleRef.current, e.shiftKey ? -1 : 1, {
+        providers,
+        songs: songSuggestions.map((s) => s.title),
+      });
+      if (!step) return;
+      cycleRef.current = step.state;
+      setQuery(step.value);
+      setSel(0);
+      setSelMoved(false);
+      return;
+    }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       const dir = e.key === "ArrowDown" ? 1 : -1;
@@ -221,6 +269,8 @@ export function TerminalApp() {
               aria-label="search for a song"
               value={query}
               onChange={(e) => {
+                // Typing anything abandons the completion cycle.
+                cycleRef.current = null;
                 setQuery(e.target.value);
                 setSel(0);
                 setSelMoved(false);
@@ -245,37 +295,53 @@ export function TerminalApp() {
         </label>
 
         <div className="mt-[18px] min-h-[200px]">
-          {showCommands
-            ? commandSuggestions.map((c, i) => (
+          {showProviders
+            ? providerOptions.map((p, i) => (
                 <SuggestionRow
-                  key={c.name}
+                  key={p}
                   on={i === sel}
                   idx={i}
-                  title={c.name}
-                  sub={c.hint}
-                  tag="cmd"
-                  onPick={() => pickCommand(c.name)}
+                  title={p}
+                  sub={p === PROVIDER_ALL ? "every enabled source" : "this source only"}
+                  tag={(provider ?? PROVIDER_ALL) === p ? "active" : "src"}
+                  onPick={() => applyProvider(p)}
                 />
               ))
-            : songSuggestions.map((s, i) => (
-                <SuggestionRow
-                  key={`${s.provider}:${s.id}`}
-                  on={i === sel}
-                  idx={i}
-                  title={s.title}
-                  sub={`· ${s.artist}`}
-                  tag={`${CAPABILITY_LABEL[s.capability]} · ${s.provider}`}
-                  onPick={() => openSong(s, "home")}
-                />
-              ))}
-          {!showCommands && isFetching && songSuggestions.length === 0 && (
+            : showCommands
+              ? commandSuggestions.map((c, i) => (
+                  <SuggestionRow
+                    key={c.name}
+                    on={i === sel}
+                    idx={i}
+                    title={c.name}
+                    sub={c.hint}
+                    tag="cmd"
+                    onPick={() => pickCommand(c.name)}
+                  />
+                ))
+              : songSuggestions.map((s, i) => (
+                  <SuggestionRow
+                    key={`${s.provider}:${s.id}`}
+                    on={i === sel}
+                    idx={i}
+                    title={s.title}
+                    sub={`· ${s.artist}`}
+                    tag={`${CAPABILITY_LABEL[s.capability]} · ${s.provider}`}
+                    onPick={() => openSong(s, "home")}
+                  />
+                ))}
+          {!showCommands && !showProviders && isFetching && songSuggestions.length === 0 && (
             <div className="py-[5px] text-term-faint">searching…</div>
           )}
-          {!showCommands && !isFetching && term.length >= 2 && songSuggestions.length === 0 && (
-            <div className="py-[5px] text-term-dim">
-              no match for “{term}” — <span className="text-term-fg">enter</span> for details →
-            </div>
-          )}
+          {!showCommands &&
+            !showProviders &&
+            !isFetching &&
+            term.length >= 2 &&
+            songSuggestions.length === 0 && (
+              <div className="py-[5px] text-term-dim">
+                no match for “{term}” — <span className="text-term-fg">enter</span> for details →
+              </div>
+            )}
         </div>
 
         <div className="mt-14 flex flex-nowrap gap-x-[26px] gap-y-1.5 overflow-x-auto border-t border-term-line pt-3.5 text-[11px] text-term-faint">
@@ -284,6 +350,9 @@ export function TerminalApp() {
           </span>
           <span className="flex-none whitespace-nowrap">
             <span className="text-term-dim">↑ ↓</span> · move selection
+          </span>
+          <span className="flex-none whitespace-nowrap">
+            <span className="text-term-dim">tab</span> · complete
           </span>
           <span className="flex-none whitespace-nowrap">
             <span className="text-term-dim">/</span> · commands

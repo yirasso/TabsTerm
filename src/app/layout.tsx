@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/chrome/site-header";
 import { env } from "@/lib/env";
+import { activeProviders } from "@/server/tabs/registry";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -29,12 +30,14 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const providers = activeProviders().map((p) => p.id);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${jetbrainsMono.variable} antialiased`}>
         <Providers>
           <div className="tt-scanlines" aria-hidden />
-          <SiteHeader />
+          <SiteHeader providers={providers} />
           {children}
         </Providers>
       </body>

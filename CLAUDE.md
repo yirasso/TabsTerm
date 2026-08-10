@@ -26,6 +26,12 @@ npm run check     # typecheck + biome + vitest
   component markup — never a change to `src/server/` or `src/lib/`.
 - **Search results must not carry tab content.** `localProvider.search` parses through
   `songSummarySchema` specifically to strip it.
+- **`searchAllProviders` may only narrow `TAB_PROVIDERS`, never widen it.** The
+  `provider` query param is a client-supplied filter; treating it as a way to enable a
+  source would let anyone switch on what the operator turned off. There is an e2e test
+  pinning this.
+- **Capability is decided in one place**, `deriveCapability` in `src/server/tabs/types.ts`.
+  Providers call it instead of hard-coding a badge value.
 - **E2E runs with `TAB_PROVIDERS=local`** (set in `playwright.config.ts`) so it is
   deterministic and offline. Don't write e2e assertions against Songsterr results.
 

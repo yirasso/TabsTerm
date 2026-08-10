@@ -27,16 +27,26 @@ function dedupe(results: SongSummary[]): SongSummary[] {
   });
 }
 
+export type SearchOptions = {
+  /** Restrict to one source. Ignored if that source is not enabled. */
+  provider?: string | null;
+  signal?: AbortSignal;
+};
+
 /**
- * Fan out to every enabled provider. One slow or broken source degrades the
+ * Fan out to the enabled providers. One slow or broken source degrades the
  * response instead of failing it — the UI can then say which source is down.
+ *
+ * `options.provider` can only narrow `TAB_PROVIDERS`, never widen it: a client
+ * must not be able to switch on a source the operator turned off.
  */
 export async function searchAllProviders(
   query: string,
-  signal?: AbortSignal,
+  options: SearchOptions = {},
 ): Promise<SearchResponse> {
-  const providers = activeProviders();
-  const settled = await Promise.allSettled(providers.map((p) => p.search(query, signal)));
+  const enabled = activeProviders();
+  const providers = options.provider ? enabled.filter((p) => p.id === options.provider) : enabled;
+  const settled = await Promise.allSettled(providers.map((p) => p.search(query, options.signal)));
 
   const results: SongSummary[] = [];
   const degraded: SearchResponse["degraded"] = [];

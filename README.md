@@ -70,9 +70,25 @@ src/
 
 ### Keyboard
 
-`enter` run · `↑ ↓` / `j k` move · `esc` back · `⌘K` palette · on a tab:
-`space` play · `f` focus · `a` autoscroll · `s` favorite · `t` theme (anywhere).
-Slash commands: `/tab`, `/chords`, `/artist`, `/fav`, `/login`, `/man`, `/theme`.
+`enter` run · `tab` complete (`shift+tab` backwards) · `↑ ↓` / `j k` move ·
+`esc` back · `⌘K` palette · on a tab: `space` play · `f` focus · `a` autoscroll ·
+`s` favorite · `t` theme (anywhere).
+
+Slash commands: `/tab`, `/chords`, `/artist`, `/provider`, `/fav`, `/login`,
+`/man`, `/theme`.
+
+**Tab completion** works the way a shell's does, and lives in
+`src/components/terminal/completion.ts` as pure functions. `/art` + Tab finishes
+the command; a command that takes an argument completes with a trailing space so
+the next Tab moves on to completing that argument. Repeated Tabs cycle the
+candidates. Arguments complete for `/provider` (source ids) and for the search
+commands (titles currently on screen).
+
+**`/provider <name>`** restricts search to one source; `all` clears it. The choice
+lives in `src/stores/prefs.ts` for the session and is mirrored by a `src:` chip in
+the header. It travels as `?provider=` on `/api/search`, and the registry can only
+*narrow* `TAB_PROVIDERS` with it — a client must never be able to switch on a
+source the operator turned off.
 
 ### Tab sources
 
