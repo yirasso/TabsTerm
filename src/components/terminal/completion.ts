@@ -10,18 +10,18 @@ export type CompletionContext = {
 /** Live cycle position. Null once the user types anything that is not Tab. */
 export type CycleState = { candidates: string[]; index: number; applied: string } | null;
 
-/** "all" is not a provider — it is the absence of a filter. */
-export const PROVIDER_ALL = "all";
+/** "all" is not a source — it is the absence of a filter. */
+export const SOURCE_ALL = "all";
 
 const SPLIT = /^(\S+)\s+([\s\S]*)$/;
-const TAKES_SONG = new Set(["/tab", "/chords", "/artist"]);
+const TAKES_SONG = new Set(["/tab", "/artist"]);
 
 function commandWord(name: string) {
   return name.split(" ")[0] ?? name;
 }
 
 function argCandidates(cmd: string, ctx: CompletionContext): string[] {
-  if (cmd === "/provider") return [PROVIDER_ALL, ...ctx.providers];
+  if (cmd === "/src") return [SOURCE_ALL, ...ctx.providers];
   if (TAKES_SONG.has(cmd)) return ctx.songs ?? [];
   return [];
 }

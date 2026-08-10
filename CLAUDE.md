@@ -32,6 +32,12 @@ npm run check     # typecheck + biome + vitest
   pinning this.
 - **Capability is decided in one place**, `deriveCapability` in `src/server/tabs/types.ts`.
   Providers call it instead of hard-coding a badge value.
+- **The source filter (`/src`) is session-only on purpose.** With no indicator in the
+  header, a filter that survived a reload would silently haunt the reader. Do not add
+  `persist` to `src/stores/prefs.ts` without also adding a visible indicator.
+- **The daily quote is picked on the server** (`src/data/quotes.ts` + `revalidate` on
+  the home page), never client-side — computing it during render on both sides is a
+  hydration mismatch waiting for midnight.
 - **E2E runs with `TAB_PROVIDERS=local`** (set in `playwright.config.ts`) so it is
   deterministic and offline. Don't write e2e assertions against Songsterr results.
 

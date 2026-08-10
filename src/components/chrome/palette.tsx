@@ -50,7 +50,7 @@ export function Palette() {
     }
     if (name === "/fav") router.push("/?view=favs" as Route);
     else if (name === "/theme") cycle();
-    else if (name === "/login") openAuth();
+    else if (name === "/auth") openAuth();
     else if (name === "/man") openAbout();
   };
 

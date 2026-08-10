@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { nextProvider, usePrefs } from "@/stores/prefs";
 import { useSession } from "@/stores/session";
 import { useUi } from "@/stores/ui";
 import { AboutModal } from "./about-modal";
@@ -9,12 +8,10 @@ import { AuthModal } from "./auth-modal";
 import { Palette } from "./palette";
 import { useThemeCycle } from "./use-theme-cycle";
 
-export function SiteHeader({ providers = [] }: { providers?: string[] }) {
+export function SiteHeader() {
   const { aboutOpen, authOpen, paletteOpen, openAbout, openAuth, togglePalette } = useUi();
   const user = useSession((s) => s.user);
   const { theme, cycle } = useThemeCycle();
-  const provider = usePrefs((s) => s.provider);
-  const setProvider = usePrefs((s) => s.setProvider);
 
   // next-themes only knows the real theme after mount.
   const [mounted, setMounted] = useState(false);
@@ -45,16 +42,6 @@ export function SiteHeader({ providers = [] }: { providers?: string[] }) {
         <span className="text-[11px] text-term-faint">v0.4.1</span>
         <span className="flex-1" />
         <div className="flex items-center gap-3.5 text-[11px] text-term-dim">
-          {providers.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setProvider(nextProvider(provider, providers))}
-              title="which sources search queries. /provider also sets this"
-              className="whitespace-nowrap border border-term-line px-2 py-[3px] hover:border-term-accent hover:text-term-fg"
-            >
-              src: {provider ?? "all"}
-            </button>
-          )}
           <button
             type="button"
             onClick={cycle}

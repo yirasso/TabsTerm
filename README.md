@@ -74,21 +74,27 @@ src/
 `esc` back · `⌘K` palette · on a tab: `space` play · `f` focus · `a` autoscroll ·
 `s` favorite · `t` theme (anywhere).
 
-Slash commands: `/tab`, `/chords`, `/artist`, `/provider`, `/fav`, `/login`,
-`/man`, `/theme`.
+Slash commands: `/tab`, `/artist`, `/src`, `/fav`, `/auth`, `/man`, `/theme`.
 
 **Tab completion** works the way a shell's does, and lives in
 `src/components/terminal/completion.ts` as pure functions. `/art` + Tab finishes
 the command; a command that takes an argument completes with a trailing space so
 the next Tab moves on to completing that argument. Repeated Tabs cycle the
-candidates. Arguments complete for `/provider` (source ids) and for the search
-commands (titles currently on screen).
+candidates, Shift+Tab walks back. Arguments complete for `/src` (source ids) and
+for the search commands (titles currently on screen).
 
-**`/provider <name>`** restricts search to one source; `all` clears it. The choice
-lives in `src/stores/prefs.ts` for the session and is mirrored by a `src:` chip in
-the header. It travels as `?provider=` on `/api/search`, and the registry can only
-*narrow* `TAB_PROVIDERS` with it — a client must never be able to switch on a
-source the operator turned off.
+**`/src <name>`** restricts search to one source; `all` clears it. The choice
+lives in `src/stores/prefs.ts` and is deliberately session-only — there is no
+indicator in the header, so a filter that survived a reload would silently haunt
+the reader. While it is active the results header says `$ find "…" --src local`.
+It travels as `?provider=` on `/api/search`, and the registry can only *narrow*
+`TAB_PROVIDERS` with it — a client must never be able to switch on a source the
+operator turned off.
+
+**The idle prompt shows the day's quote** (`$ fortune`), picked from
+`src/data/quotes.ts` by UTC day. It is chosen on the server and the home page is
+ISR with `revalidate = 3600`, so the quote is in the first byte of HTML, cannot
+mismatch on hydration, and rotates daily.
 
 ### Tab sources
 

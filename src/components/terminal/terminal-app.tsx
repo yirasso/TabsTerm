@@ -7,6 +7,7 @@ import { useQueryState } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
 import { CapabilityBadge } from "@/components/tab/capability-badge";
+import type { Quote } from "@/data/quotes";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSongSearch } from "@/hooks/use-song-search";
 import { CAPABILITY_LABEL, type SongSummary } from "@/server/tabs/types";
@@ -14,7 +15,7 @@ import { usePrefs } from "@/stores/prefs";
 import { type FavEntry, useSession } from "@/stores/session";
 import { anyModalOpen, useUi } from "@/stores/ui";
 import { COMMANDS, parseCommand, searchTermFor } from "./commands";
-import { type CycleState, nextCompletion, PROVIDER_ALL } from "./completion";
+import { type CycleState, nextCompletion, SOURCE_ALL } from "./completion";
 import { useGhostTyper } from "./use-ghost-typer";
 
 const INTRO = `tabsterm — guitar tablature behind a text prompt.
@@ -30,7 +31,7 @@ function noResultsText(term: string) {
   · try one of: greensleeves · scarborough fair · ode to joy · house of the rising sun`;
 }
 
-export function TerminalApp({ providers = [] }: { providers?: string[] }) {
+export function TerminalApp({ providers = [], quote }: { providers?: string[]; quote?: Quote }) {
   const router = useRouter();
   const [query, setQuery] = useQueryState("q", { defaultValue: "", shallow: true });
   const [view, setView] = useQueryState("view", { shallow: true });
@@ -56,35 +57,35 @@ export function TerminalApp({ providers = [] }: { providers?: string[] }) {
 
   const cmd = parseCommand(query);
   const isCmd = query.trim().startsWith("/");
-  const typeFilter = cmd?.cmd === "/chords" ? "chords" : null;
 
-  const searchResults = data?.results ?? [];
-  const filteredResults = typeFilter
-    ? searchResults.filter((r) => r.type === typeFilter)
-    : searchResults;
+  const filteredResults = data?.results ?? [];
   const degraded = data?.degraded ?? [];
 
-  // Home suggestions: provider values while completing /provider, otherwise
-  // commands when idle or typing "/", otherwise live search hits.
+  // What the area under the prompt shows: the day's quote when nothing is
+  // typed, source values while completing /src, commands while typing a slash
+  // command, live search hits otherwise.
   const trimmed = query.trim().toLowerCase();
-  const providerOptions =
-    cmd?.cmd === "/provider"
-      ? [PROVIDER_ALL, ...providers].filter((p) => p.startsWith(cmd.arg.toLowerCase()))
+  const sourceOptions =
+    cmd?.cmd === "/src"
+      ? [SOURCE_ALL, ...providers].filter((p) => p.startsWith(cmd.arg.toLowerCase()))
       : [];
-  const showProviders = providerOptions.length > 0;
-  const showCommands = !showProviders && (isCmd || !trimmed);
-  const commandSuggestions = !isCmd
-    ? COMMANDS
-    : COMMANDS.filter((c) => trimmed === "/" || c.name.startsWith(trimmed.split(" ")[0] ?? ""));
+  const showQuote = !trimmed;
+  const showSources = !showQuote && sourceOptions.length > 0;
+  const showCommands = !showQuote && !showSources && isCmd;
+  const commandSuggestions = COMMANDS.filter(
+    (c) => trimmed === "/" || c.name.startsWith(trimmed.split(" ")[0] ?? ""),
+  );
   const songSuggestions = filteredResults.slice(0, 6);
-  const listLength = showProviders
-    ? providerOptions.length
+  const listLength = showSources
+    ? sourceOptions.length
     : showCommands
       ? commandSuggestions.length
-      : songSuggestions.length;
+      : showQuote
+        ? 0
+        : songSuggestions.length;
 
-  const applyProvider = (value: string) => {
-    setProvider(value === PROVIDER_ALL ? null : value);
+  const applySource = (value: string) => {
+    setProvider(value === SOURCE_ALL ? null : value);
     setQuery("");
     setSel(0);
     setSelMoved(false);
@@ -116,15 +117,15 @@ export function TerminalApp({ providers = [] }: { providers?: string[] }) {
       return;
     }
     if (c.cmd === "/theme") return cycle();
-    if (c.cmd === "/login") return openAuth();
+    if (c.cmd === "/auth") return openAuth();
     if (c.cmd === "/man") return openAbout();
-    if (c.cmd === "/provider") {
+    if (c.cmd === "/src") {
       const wanted = c.arg.toLowerCase();
-      if (wanted === PROVIDER_ALL) return applyProvider(PROVIDER_ALL);
-      if (providers.includes(wanted)) return applyProvider(wanted);
+      if (wanted === SOURCE_ALL) return applySource(SOURCE_ALL);
+      if (providers.includes(wanted)) return applySource(wanted);
       return;
     }
-    if (["/tab", "/chords", "/artist"].includes(c.cmd) && c.arg) {
+    if (["/tab", "/artist"].includes(c.cmd) && c.arg) {
       setView("results");
       setSel(0);
       setSelMoved(false);
@@ -145,9 +146,9 @@ export function TerminalApp({ providers = [] }: { providers?: string[] }) {
 
   const submit = () => {
     if (!query.trim()) return;
-    if (showProviders) {
-      const pick = providerOptions[sel];
-      if (pick) applyProvider(pick);
+    if (showSources) {
+      const pick = sourceOptions[sel];
+      if (pick) applySource(pick);
       return;
     }
     if (isCmd) {
@@ -295,53 +296,61 @@ export function TerminalApp({ providers = [] }: { providers?: string[] }) {
         </label>
 
         <div className="mt-[18px] min-h-[200px]">
-          {showProviders
-            ? providerOptions.map((p, i) => (
-                <SuggestionRow
-                  key={p}
-                  on={i === sel}
-                  idx={i}
-                  title={p}
-                  sub={p === PROVIDER_ALL ? "every enabled source" : "this source only"}
-                  tag={(provider ?? PROVIDER_ALL) === p ? "active" : "src"}
-                  onPick={() => applyProvider(p)}
-                />
-              ))
-            : showCommands
-              ? commandSuggestions.map((c, i) => (
-                  <SuggestionRow
-                    key={c.name}
-                    on={i === sel}
-                    idx={i}
-                    title={c.name}
-                    sub={c.hint}
-                    tag="cmd"
-                    onPick={() => pickCommand(c.name)}
-                  />
-                ))
-              : songSuggestions.map((s, i) => (
-                  <SuggestionRow
-                    key={`${s.provider}:${s.id}`}
-                    on={i === sel}
-                    idx={i}
-                    title={s.title}
-                    sub={`· ${s.artist}`}
-                    tag={`${CAPABILITY_LABEL[s.capability]} · ${s.provider}`}
-                    onPick={() => openSong(s, "home")}
-                  />
-                ))}
-          {!showCommands && !showProviders && isFetching && songSuggestions.length === 0 && (
-            <div className="py-[5px] text-term-faint">searching…</div>
+          {showQuote && quote && <DailyQuote quote={quote} />}
+
+          {showSources &&
+            sourceOptions.map((p, i) => (
+              <SuggestionRow
+                key={p}
+                on={i === sel}
+                idx={i}
+                title={p}
+                sub={p === SOURCE_ALL ? "every enabled source" : "this source only"}
+                tag={(provider ?? SOURCE_ALL) === p ? "active" : "src"}
+                onPick={() => applySource(p)}
+              />
+            ))}
+
+          {showCommands &&
+            commandSuggestions.map((c, i) => (
+              <SuggestionRow
+                key={c.name}
+                on={i === sel}
+                idx={i}
+                title={c.name}
+                sub={c.hint}
+                tag="cmd"
+                onPick={() => pickCommand(c.name)}
+              />
+            ))}
+
+          {!showQuote &&
+            !showSources &&
+            !showCommands &&
+            songSuggestions.map((s, i) => (
+              <SuggestionRow
+                key={`${s.provider}:${s.id}`}
+                on={i === sel}
+                idx={i}
+                title={s.title}
+                sub={`· ${s.artist}`}
+                tag={`${CAPABILITY_LABEL[s.capability]} · ${s.provider}`}
+                onPick={() => openSong(s, "home")}
+              />
+            ))}
+
+          {!showQuote && !showSources && !showCommands && (
+            <>
+              {isFetching && songSuggestions.length === 0 && (
+                <div className="py-[5px] text-term-faint">searching…</div>
+              )}
+              {!isFetching && term.length >= 2 && songSuggestions.length === 0 && (
+                <div className="py-[5px] text-term-dim">
+                  no match for “{term}” — <span className="text-term-fg">enter</span> for details →
+                </div>
+              )}
+            </>
           )}
-          {!showCommands &&
-            !showProviders &&
-            !isFetching &&
-            term.length >= 2 &&
-            songSuggestions.length === 0 && (
-              <div className="py-[5px] text-term-dim">
-                no match for “{term}” — <span className="text-term-fg">enter</span> for details →
-              </div>
-            )}
         </div>
 
         <div className="mt-14 flex flex-nowrap gap-x-[26px] gap-y-1.5 overflow-x-auto border-t border-term-line pt-3.5 text-[11px] text-term-faint">
@@ -366,16 +375,19 @@ export function TerminalApp({ providers = [] }: { providers?: string[] }) {
   }
 
   if (screen === "results") {
-    const providers = [...new Set(searchResults.map((r) => r.provider))];
+    // Which sources actually answered, so a narrowed search is visible here
+    // now that the header carries no indicator.
+    const sourcesUsed = [...new Set(filteredResults.map((r) => r.provider))];
     return (
       <main className="mx-auto max-w-[900px] px-[22px] pb-20 pt-[34px]">
         <div className="text-term-dim">
-          <span className="text-term-accent">$</span> find “{term}”{typeFilter ? " --chords" : ""}
+          <span className="text-term-accent">$</span> find “{term}”
+          {provider ? ` --src ${provider}` : ""}
         </div>
         <div className="text-[11px] text-term-faint">
           {isFetching && filteredResults.length === 0
             ? "querying sources…"
-            : `${filteredResults.length} results · sources: ${providers.join(", ") || "none"}`}
+            : `${filteredResults.length} results · sources: ${sourcesUsed.join(", ") || "none"}`}
         </div>
         {degraded.map((d) => (
           <div key={d.provider} className="text-[11px] text-term-accent">
@@ -482,6 +494,21 @@ export function TerminalApp({ providers = [] }: { providers?: string[] }) {
         </div>
       )}
     </main>
+  );
+}
+
+/** The idle prompt's fortune: one quote, the same for everyone, all day. */
+function DailyQuote({ quote }: { quote: Quote }) {
+  return (
+    <div className="py-[5px]">
+      <div className="text-[11px] text-term-faint">
+        <span className="text-term-accent">$</span> fortune
+      </div>
+      <blockquote className="mt-2.5 border-term-accent border-l-2 pl-3.5">
+        <p className="text-[14px] leading-[1.6]">“{quote.text}”</p>
+        <footer className="mt-1.5 text-[11px] text-term-faint">— {quote.author}</footer>
+      </blockquote>
+    </div>
   );
 }
 

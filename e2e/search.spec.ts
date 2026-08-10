@@ -73,26 +73,26 @@ test("tab cycles through the provider values", async ({ page }) => {
   await page.goto("/");
   const prompt = page.getByLabel("search for a song");
 
-  await prompt.fill("/provider");
+  await prompt.fill("/src");
   await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/provider ");
+  await expect(prompt).toHaveValue("/src ");
 
   await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/provider all");
+  await expect(prompt).toHaveValue("/src all");
 
   await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/provider local");
+  await expect(prompt).toHaveValue("/src local");
 
   // Shift+Tab walks back.
   await prompt.press("Shift+Tab");
-  await expect(prompt).toHaveValue("/provider all");
+  await expect(prompt).toHaveValue("/src all");
 });
 
-test("/provider narrows which source is searched", async ({ page }) => {
+test("/src narrows which source is searched", async ({ page }) => {
   await page.goto("/");
   const prompt = page.getByLabel("search for a song");
 
-  await prompt.fill("/provider local");
+  await prompt.fill("/src local");
   await prompt.press("Enter");
   // Running the command clears the prompt and records the choice.
   await expect(prompt).toHaveValue("");
@@ -110,9 +110,21 @@ test("a client cannot switch on a source the server disabled", async ({ request 
   expect((await res.json()).results).toEqual([]);
 });
 
-test("the header chip cycles the active source", async ({ page }) => {
+test("the idle prompt shows the day's quote, and typing replaces it", async ({ page }) => {
   await page.goto("/");
-  // Only one provider is enabled under test, so the chip stays hidden.
+
+  const fortune = page.getByRole("blockquote");
+  await expect(page.getByText("$ fortune")).toBeVisible();
+  await expect(fortune).toBeVisible();
+  // Server-rendered, so it carries an attribution from the first byte.
+  await expect(fortune.locator("footer")).toContainText("—");
+
+  await page.getByLabel("search for a song").fill("greensleeves");
+  await expect(fortune).toBeHidden();
+});
+
+test("the header carries no source chip", async ({ page }) => {
+  await page.goto("/");
   await expect(page.getByRole("button", { name: /^src:/ })).toHaveCount(0);
 });
 

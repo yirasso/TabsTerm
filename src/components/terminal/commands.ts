@@ -3,11 +3,10 @@ export type Command = { name: string; hint: string };
 /** Slash commands surfaced in the prompt and the ⌘K palette. */
 export const COMMANDS: Command[] = [
   { name: "/tab <song>", hint: "open the matching tab" },
-  { name: "/chords <song>", hint: "chord sheets only" },
   { name: "/artist <name>", hint: "search by artist" },
-  { name: "/provider <name>", hint: "restrict search to one source" },
+  { name: "/src <name>", hint: "restrict search to one source" },
   { name: "/fav", hint: "list favorited tabs" },
-  { name: "/login", hint: "account: login or signup" },
+  { name: "/auth", hint: "account: login or signup" },
   { name: "/man", hint: "what tabsterm is" },
   { name: "/theme", hint: "cycle theme" },
 ];
@@ -18,10 +17,10 @@ export const GHOSTS = [
   "house of the rising sun",
   "/tab ode to joy",
   "scarborough fair",
-  "/provider local",
+  "/src local",
 ];
 
-const SEARCH_COMMANDS = ["/tab", "/chords", "/artist"];
+const SEARCH_COMMANDS = ["/tab", "/artist"];
 
 export function parseCommand(q: string): { cmd: string; arg: string } | null {
   const m = /^\/(\S+)\s*(.*)$/.exec(q.trim());
