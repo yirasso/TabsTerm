@@ -16,11 +16,12 @@ DESCRIPTION
 BADGES
   Every result says up front what it gives you.
 
-  audio   tablature we host, with sound and a moving cursor
-  text    tablature we host, silent
-  link    the song exists, but reading it means leaving for
-          the source — those tabs are licensed to their
-          publishers, so we point at them instead of copying`;
+  audio   playable — a digital guitar plays it back and a
+          cursor walks the tab in time
+  text    readable, but with no stave we can turn into notes
+
+  Everything here is hosted by us. Nothing is scraped from
+  another site, so nothing sends you somewhere else to read.`;
 
 export function AboutModal() {
   const closeAbout = useUi((s) => s.closeAbout);

@@ -130,6 +130,34 @@ A|-----------------|-----------------|
 E|-----------------|-----------------|`,
   },
   {
+    // No stave on purpose: this is what a `text`-capability tab looks like, and
+    // proves the player never offers transport it cannot honour.
+    id: "amazing-grace",
+    title: "Amazing Grace",
+    artist: "Traditional",
+    album: null,
+    type: "chords",
+    tuning: STANDARD,
+    capo: 0,
+    difficulty: "beginner",
+    content: `[Chords]
+G      G7     C      D7
+320003 320001 x32010 xx0212
+
+[Verse 1]
+G                 G7        C        G
+Amazing grace, how sweet the sound
+G                          D7
+That saved a wretch like me
+G           G7      C        G
+I once was lost, but now am found
+G        D7      G
+Was blind, but now I see
+
+[Strumming]
+D  DU  UDU   — one bar per chord, 3/4 time`,
+  },
+  {
     id: "canon-in-d-bass",
     title: "Canon in D",
     artist: "Johann Pachelbel",

@@ -12,7 +12,7 @@ const csv = (fallback: string) =>
     );
 
 const serverSchema = z.object({
-  TAB_PROVIDERS: csv("local,songsterr"),
+  TAB_PROVIDERS: csv("local"),
   TAB_FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   NEXT_PUBLIC_SITE_URL: z.string().url().default("http://localhost:3000"),
 });

@@ -2,13 +2,24 @@ import { describe, expect, it } from "vitest";
 import { deriveCapability } from "../types";
 import { localProvider } from "./local";
 
+const STAVE = `e|--0--|
+B|--1--|
+G|--0--|
+D|--2--|
+A|--3--|
+E|-----|`;
+
 describe("deriveCapability", () => {
-  it("is 'text' for tablature we host without audio", () => {
-    expect(deriveCapability({ content: "e|--0--|", externalOnly: false })).toBe("text");
+  it("is 'full' when there is a stave the player can turn into notes", () => {
+    expect(deriveCapability({ content: STAVE, externalOnly: false })).toBe("full");
+  });
+
+  it("is 'text' for content with nothing playable in it", () => {
+    expect(deriveCapability({ content: "[Verse]\nAm  C  G", externalOnly: false })).toBe("text");
   });
 
   it("is 'link' when the source only lets us point at it", () => {
-    expect(deriveCapability({ content: "e|--0--|", externalOnly: true })).toBe("link");
+    expect(deriveCapability({ content: STAVE, externalOnly: true })).toBe("link");
   });
 
   it("is 'link' when there is no content to render", () => {
@@ -41,9 +52,14 @@ describe("localProvider", () => {
     expect(first).not.toHaveProperty("content");
   });
 
-  it("labels its own tablature as readable but silent", async () => {
+  it("labels a stave-bearing tab as playable", async () => {
     const [first] = await localProvider.search("Greensleeves");
-    expect(first?.capability).toBe("text");
+    expect(first?.capability).toBe("full");
+  });
+
+  it("labels a chord sheet as readable but silent", async () => {
+    const [first] = await localProvider.search("House of the Rising Sun");
+    expect(first?.type).toBe("chords");
   });
 
   it("returns full content from getTab", async () => {

@@ -4,25 +4,25 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
+import { useTabPlayback } from "@/hooks/use-tab-playback";
 import type { Tab } from "@/server/tabs/types";
 import { favKey, useSession } from "@/stores/session";
 import { anyModalOpen } from "@/stores/ui";
 import { CapabilityBadge } from "./capability-badge";
-import { parseSections } from "./parse-sections";
+import { TabRender } from "./tab-render";
 
 export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
   const router = useRouter();
   const { cycle } = useThemeCycle();
 
-  const sections = parseSections(tab.content);
-  const playable = sections.length > 0;
+  const { parsed, playable, playing, bpm, column, toggle, stop, setBpm } = useTabPlayback(
+    tab.content,
+    tab.tuning,
+  );
 
-  const [playing, setPlaying] = useState(false);
-  const [beat, setBeat] = useState(0);
-  const [bpm, setBpm] = useState(96);
   const [autoscroll, setAutoscroll] = useState(true);
   const [focusMode, setFocusMode] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const activeStaveRef = useRef<HTMLDivElement>(null);
 
   const favs = useSession((s) => s.favs);
   const toggleFavStore = useSession((s) => s.toggleFav);
@@ -37,32 +37,19 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
       capability: tab.capability,
     });
 
-  const back = () => router.push(backHref);
+  const back = () => {
+    stop();
+    router.push(backHref);
+  };
 
-  // The design's playback loop: one tick per section, 4 beats per tick.
-  useEffect(() => {
-    if (!playing || !playable) return;
-    const ms = (60000 / bpm) * 4;
-    const timer = setInterval(() => {
-      setBeat((b) => {
-        const next = b + 1;
-        if (next >= sections.length) {
-          setPlaying(false);
-          return 0;
-        }
-        return next;
-      });
-    }, ms);
-    return () => clearInterval(timer);
-  }, [playing, bpm, playable, sections.length]);
-
+  // Follow the cursor by scrolling to whichever stave holds it.
   useEffect(() => {
     if (!playing || !autoscroll) return;
-    const el = scrollRef.current?.children[beat] as HTMLElement | undefined;
+    const el = activeStaveRef.current;
     if (!el) return;
     const y = el.getBoundingClientRect().top + window.scrollY - 130;
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-  }, [beat, playing, autoscroll]);
+  }, [playing, autoscroll]);
 
   // space play · f focus · t theme · a autoscroll · s fav · esc back
   useEffect(() => {
@@ -74,7 +61,7 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
       if (e.key === " ") {
         if (playable) {
           e.preventDefault();
-          setPlaying((p) => !p);
+          toggle();
         }
         return;
       }
@@ -95,6 +82,9 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
     tab.provider,
   ].filter((m): m is string => Boolean(m));
 
+  const totalBars = Math.max(1, Math.ceil(parsed.totalColumns / 16));
+  const currentBar = column < 0 ? 0 : Math.min(totalBars, Math.floor(column / 16) + 1);
+
   return (
     <>
       <main
@@ -107,7 +97,7 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
         )}
 
         <div className="mb-1.5 flex flex-wrap items-baseline gap-x-[18px] gap-y-1.5 border-b border-term-fg pb-2.5">
-          <h1 className="text-[19px] font-bold">{tab.title}</h1>
+          <h1 className="font-bold text-[19px]">{tab.title}</h1>
           <span className="text-term-dim">· {tab.artist}</span>
           <span className="flex-1" />
           <span className="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-[11px] text-term-faint">
@@ -122,93 +112,44 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
 
         {!focusMode && (
           <div className="mb-[26px] text-[11px] text-term-faint">
+            {tab.attributionName ? `transcribed by ${tab.attributionName} · ` : ""}
             source: {tab.provider}
-            {tab.sourceUrl && (
-              <>
-                {" · "}
-                <a href={tab.sourceUrl} target="_blank" rel="noreferrer noopener">
-                  view on source ↗
-                </a>
-              </>
-            )}
+            {tab.license ? ` · ${tab.license}` : ""}
           </div>
         )}
 
-        {playable ? (
-          <div ref={scrollRef} className="flex flex-col gap-[34px]">
-            {sections.map((sec, i) => {
-              const active = playing && i === beat;
-              return (
-                <div
-                  // Sections are parsed from static content and never reorder;
-                  // label + first body line is stable and unique enough.
-                  key={`${sec.label}:${sec.body.slice(0, 24)}`}
-                  className="border-l-2 pl-4"
-                  style={{
-                    borderColor: active ? "var(--tt-accent)" : "var(--tt-line)",
-                    opacity: playing && !active ? 0.42 : 1,
-                  }}
-                >
-                  <div className="mb-1.5 flex items-baseline gap-2.5">
-                    <span
-                      className={`flex-none whitespace-nowrap text-[11px] uppercase tracking-[0.14em] ${active ? "text-term-accent" : "text-term-dim"}`}
-                    >
-                      {sec.label}
-                    </span>
-                  </div>
-                  <pre className="tab-content text-[13px] leading-[1.8] tracking-[0.02em]">
-                    {sec.body}
-                  </pre>
-                </div>
-              );
-            })}
-          </div>
+        {parsed.blocks.length > 0 ? (
+          <TabRender
+            blocks={parsed.blocks}
+            column={playing ? column : -1}
+            activeRef={activeStaveRef}
+          />
         ) : (
-          <div>
-            <pre className="whitespace-pre-wrap text-[13px] leading-[1.9] text-term-dim">
-              {`this tab is hosted by ${tab.provider} — the transcription lives on their site.`}
-            </pre>
-            {tab.sourceUrl && (
-              <a
-                href={tab.sourceUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="mt-[22px] inline-block border border-term-line px-3 py-[7px] text-[12px] hover:border-term-accent"
-              >
-                open on {tab.provider} ↗
-              </a>
-            )}
-          </div>
+          <pre className="whitespace-pre-wrap text-[13px] text-term-dim leading-[1.9]">
+            this tab has no content yet.
+          </pre>
         )}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[6] flex flex-wrap items-center gap-5 border-t border-term-line bg-term-panel px-[22px] py-2.5 text-[12px]">
-        {playable && (
+      <div className="fixed right-0 bottom-0 left-0 z-[6] flex flex-wrap items-center gap-5 border-term-line border-t bg-term-panel px-[22px] py-2.5 text-[12px]">
+        {playable ? (
           <>
             <button
               type="button"
-              onClick={() => setPlaying((p) => !p)}
+              onClick={toggle}
               className="w-[74px] text-left text-term-accent hover:text-term-fg"
             >
               {playing ? "■ stop" : "▶ play"}
             </button>
             <span className="text-term-dim">
-              bar {beat * 4 + 1} / {sections.length * 4}
+              bar {currentBar} / {totalBars}
             </span>
             <span className="flex items-center gap-2 text-term-dim">
-              <button
-                type="button"
-                onClick={() => setBpm((b) => Math.max(40, b - 4))}
-                className="px-1"
-              >
+              <button type="button" onClick={() => setBpm((b) => b - 4)} className="px-1">
                 -
               </button>
               <span className="text-term-fg">{bpm} bpm</span>
-              <button
-                type="button"
-                onClick={() => setBpm((b) => Math.min(220, b + 4))}
-                className="px-1"
-              >
+              <button type="button" onClick={() => setBpm((b) => b + 4)} className="px-1">
                 +
               </button>
             </span>
@@ -227,6 +168,8 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
               focus {focusMode ? "on" : "off"}
             </button>
           </>
+        ) : (
+          <span className="text-term-faint">no stave to play — text only</span>
         )}
         <button
           type="button"

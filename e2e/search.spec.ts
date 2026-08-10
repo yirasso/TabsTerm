@@ -54,10 +54,37 @@ test("results and the tab page say what the reader gets", async ({ page }) => {
   await page.goto("/?q=greensleeves&view=results");
 
   const row = page.getByRole("link", { name: /Greensleeves/i }).first();
-  await expect(row).toContainText("text");
+  await expect(row).toContainText("audio");
 
   await row.click();
+  await expect(page.getByTitle("tab + audio")).toBeVisible();
+});
+
+test("a chord sheet is labelled silent, and offers no transport", async ({ page }) => {
+  await page.goto("/song/local/amazing-grace");
+
   await expect(page.getByTitle("tab, no audio")).toBeVisible();
+  await expect(page.getByRole("button", { name: "▶ play" })).toHaveCount(0);
+  await expect(page.getByText(/no stave to play/i)).toBeVisible();
+});
+
+test("the digital guitar plays a tab and walks a cursor across it", async ({ page }) => {
+  await page.goto("/song/local/greensleeves");
+
+  // The badge must not promise sound the player cannot deliver.
+  await expect(page.getByTitle("tab + audio")).toBeVisible();
+
+  const play = page.getByRole("button", { name: "▶ play" });
+  await play.click();
+
+  // A visible cursor means the scheduler is running off the audio clock: if the
+  // AudioContext were suspended, currentTime would not advance and the cursor
+  // would never appear.
+  await expect(page.getByRole("button", { name: "■ stop" })).toBeVisible();
+  await expect(page.locator('[data-testid="tab-cursor"]')).toBeVisible();
+
+  await page.getByRole("button", { name: "■ stop" }).click();
+  await expect(page.locator('[data-testid="tab-cursor"]')).toHaveCount(0);
 });
 
 test("tab completes a partial command", async ({ page }) => {
@@ -103,9 +130,9 @@ test("/src narrows which source is searched", async ({ page }) => {
 });
 
 test("a client cannot switch on a source the server disabled", async ({ request }) => {
-  // This server runs TAB_PROVIDERS=local, so asking for songsterr must yield
-  // nothing rather than quietly falling back to every provider.
-  const res = await request.get("/api/search?q=greensleeves&provider=songsterr");
+  // Asking for a source that is not enabled must yield nothing rather than
+  // quietly falling back to every provider.
+  const res = await request.get("/api/search?q=greensleeves&provider=nope");
   expect(res.ok()).toBe(true);
   expect((await res.json()).results).toEqual([]);
 });
@@ -135,9 +162,9 @@ test("/random opens some tab from the hosted library", async ({ page }) => {
 });
 
 test("/random says so when the narrowed source cannot be browsed", async ({ page }) => {
-  // songsterr is search-only, and this server has it disabled anyway — either
-  // way there is nothing to draw from, and that is a state, not a crash.
-  await page.goto("/random?src=songsterr");
+  // A source that is not enabled has nothing to draw from, and that is a state,
+  // not a crash.
+  await page.goto("/random?src=nope");
 
   await expect(page.getByText(/nothing to draw from/i)).toBeVisible();
   await expect(page.getByRole("link", { name: /back to prompt/i })).toBeVisible();

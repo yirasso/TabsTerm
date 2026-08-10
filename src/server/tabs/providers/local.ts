@@ -13,7 +13,11 @@ const tabs: Tab[] = seedTabs.map((t) =>
   tabSchema.parse({
     ...t,
     provider: "local",
-    capability: deriveCapability({ content: t.content, externalOnly: false }),
+    capability: deriveCapability({
+      content: t.content,
+      externalOnly: false,
+      tuning: t.tuning,
+    }),
   }),
 );
 

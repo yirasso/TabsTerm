@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isPlayable } from "@/lib/tab/parse-notes";
 
 export const tabTypeSchema = z.enum(["tab", "chords", "bass", "drums", "ukulele", "pro"]);
 export type TabType = z.infer<typeof tabTypeSchema>;
@@ -6,9 +7,10 @@ export type TabType = z.infer<typeof tabTypeSchema>;
 /**
  * What a result actually gives the reader, so the UI can say so up front:
  *
- * - `full` — tablature we can render, with audio and a moving cursor.
- * - `text` — tablature we can render, silent.
- * - `link` — we know the song exists; reading it means leaving for the source.
+ * - `full` — has a stave we can turn into notes, so it plays back.
+ * - `text` — readable, but nothing we can play (a chord sheet, say).
+ * - `link` — reserved: reading it would mean leaving for another site. Nothing
+ *   emits this today, since every source is one we host.
  *
  * This is a promise to the user, not a description of the source, which is why
  * it rides on the summary rather than being derived in a component.
@@ -42,6 +44,10 @@ export const tabSchema = songSummarySchema.extend({
   difficulty: z.enum(["beginner", "intermediate", "advanced"]).nullable().default(null),
   /** Set when the source can only be viewed off-site (embed/player-only tabs). */
   externalOnly: z.boolean().default(false),
+  /** SPDX-ish licence string, required for anything imported from a corpus. */
+  license: z.string().nullable().default(null),
+  /** Who to credit — a contributor's handle, or a corpus's required attribution. */
+  attributionName: z.string().nullable().default(null),
 });
 export type Tab = z.infer<typeof tabSchema>;
 
@@ -79,12 +85,18 @@ export function songKey(song: Pick<SongSummary, "provider" | "id">) {
 
 /**
  * The single place capability is decided. Providers call this rather than
- * hard-coding a value, so when audio arrives only this function changes.
+ * hard-coding a value.
+ *
+ * `full` means we found a stave we can turn into notes — which is exactly the
+ * condition the player needs, so the badge can never promise sound the player
+ * cannot deliver.
  */
-export function deriveCapability(tab: Pick<Tab, "content" | "externalOnly">): TabCapability {
-  if (tab.externalOnly || !tab.content) return "link";
-  // Becomes "full" for tabs that also carry generated audio.
-  return "text";
+export function deriveCapability(
+  tab: Pick<Tab, "content" | "externalOnly"> & { tuning?: string[] | null },
+): TabCapability {
+  if (tab.externalOnly) return "link";
+  if (!tab.content) return "link";
+  return isPlayable(tab.content, tab.tuning ?? null) ? "full" : "text";
 }
 
 /** Short label for the badge, in the terminal's lowercase register. */

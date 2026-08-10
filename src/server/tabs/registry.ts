@@ -1,11 +1,9 @@
 import { env } from "@/lib/env";
 import { localProvider } from "./providers/local";
-import { songsterrProvider } from "./providers/songsterr";
 import type { SearchResponse, SongSummary, Tab, TabProvider } from "./types";
 
 const ALL: Record<string, TabProvider> = {
   [localProvider.id]: localProvider,
-  [songsterrProvider.id]: songsterrProvider,
 };
 
 /** Enabled providers, in the order configured by TAB_PROVIDERS. */
@@ -79,8 +77,8 @@ export async function getTab(
 
 /**
  * A tab drawn from the sources that can enumerate themselves. Returns null when
- * no such source is enabled — which is a real state, not an error: narrowing to
- * a search-only source like Songsterr leaves nothing to draw from.
+ * no such source is enabled — a real state, not an error: a source that can only
+ * be searched has nothing to draw from.
  *
  * The provider is picked uniformly rather than weighted by catalog size, so
  * with several enumerable sources this favours the smaller ones. Worth
