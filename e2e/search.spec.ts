@@ -50,6 +50,16 @@ test("an unknown song reports no match", async ({ page }) => {
   await expect(page.getByText(/no match in index/i)).toBeVisible();
 });
 
+test("results and the tab page say what the reader gets", async ({ page }) => {
+  await page.goto("/?q=greensleeves&view=results");
+
+  const row = page.getByRole("link", { name: /Greensleeves/i }).first();
+  await expect(row).toContainText("text");
+
+  await row.click();
+  await expect(page.getByTitle("tab, no audio")).toBeVisible();
+});
+
 test("the theme button cycles themes", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /theme: paper/ }).click();

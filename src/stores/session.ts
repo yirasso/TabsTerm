@@ -8,7 +8,7 @@ export type SessionUser = { email: string; handle: string };
 
 export type FavEntry = Pick<
   SongSummary,
-  "provider" | "id" | "title" | "artist" | "type" | "rating"
+  "provider" | "id" | "title" | "artist" | "type" | "capability"
 >;
 
 export function favKey(entry: Pick<FavEntry, "provider" | "id">) {

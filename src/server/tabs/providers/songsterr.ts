@@ -64,6 +64,8 @@ function toSummary(song: SongsterrSong): SongSummary {
     votes: null,
     // This form redirects to the canonical slug URL, so it survives renames.
     sourceUrl: `${BASE}/a/wa/song?id=${song.songId}`,
+    // Songsterr's tablature lives in their player, so we can only point at it.
+    capability: "link",
   };
 }
 

@@ -11,7 +11,16 @@ DESCRIPTION
   a wall of lyrics. TabsTerm is the opposite: one prompt, one
   query, the tab. Type a song, pick a version, play. Slash
   commands for everything else, favorites with [s], no login
-  required to read anything.`;
+  required to read anything.
+
+BADGES
+  Every result says up front what it gives you.
+
+  audio   tablature we host, with sound and a moving cursor
+  text    tablature we host, silent
+  link    the song exists, but reading it means leaving for
+          the source — those tabs are licensed to their
+          publishers, so we point at them instead of copying`;
 
 export function AboutModal() {
   const closeAbout = useUi((s) => s.closeAbout);

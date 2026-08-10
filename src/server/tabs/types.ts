@@ -3,6 +3,19 @@ import { z } from "zod";
 export const tabTypeSchema = z.enum(["tab", "chords", "bass", "drums", "ukulele", "pro"]);
 export type TabType = z.infer<typeof tabTypeSchema>;
 
+/**
+ * What a result actually gives the reader, so the UI can say so up front:
+ *
+ * - `full` — tablature we can render, with audio and a moving cursor.
+ * - `text` — tablature we can render, silent.
+ * - `link` — we know the song exists; reading it means leaving for the source.
+ *
+ * This is a promise to the user, not a description of the source, which is why
+ * it rides on the summary rather than being derived in a component.
+ */
+export const tabCapabilitySchema = z.enum(["full", "text", "link"]);
+export type TabCapability = z.infer<typeof tabCapabilitySchema>;
+
 /** What a search result row carries. Cheap to fetch, safe to list. */
 export const songSummarySchema = z.object({
   /** Provider-local id. Unique only within `provider`. */
@@ -17,6 +30,7 @@ export const songSummarySchema = z.object({
   votes: z.number().int().nonnegative().nullable().default(null),
   /** Canonical page on the source, for attribution. */
   sourceUrl: z.string().url().nullable().default(null),
+  capability: tabCapabilitySchema.default("link"),
 });
 export type SongSummary = z.infer<typeof songSummarySchema>;
 
@@ -56,3 +70,27 @@ export interface TabProvider {
 export function songKey(song: Pick<SongSummary, "provider" | "id">) {
   return `${song.provider}:${song.id}`;
 }
+
+/**
+ * The single place capability is decided. Providers call this rather than
+ * hard-coding a value, so when audio arrives only this function changes.
+ */
+export function deriveCapability(tab: Pick<Tab, "content" | "externalOnly">): TabCapability {
+  if (tab.externalOnly || !tab.content) return "link";
+  // Becomes "full" for tabs that also carry generated audio.
+  return "text";
+}
+
+/** Short label for the badge, in the terminal's lowercase register. */
+export const CAPABILITY_LABEL: Record<TabCapability, string> = {
+  full: "audio",
+  text: "text",
+  link: "link",
+};
+
+/** Sentence shown on the tab page, where there is room to be explicit. */
+export const CAPABILITY_DETAIL: Record<TabCapability, string> = {
+  full: "tab + audio",
+  text: "tab, no audio",
+  link: "opens on source",
+};

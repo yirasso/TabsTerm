@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
+import { CapabilityBadge } from "@/components/tab/capability-badge";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSongSearch } from "@/hooks/use-song-search";
-import type { SongSummary } from "@/server/tabs/types";
+import { CAPABILITY_LABEL, type SongSummary } from "@/server/tabs/types";
 import { type FavEntry, useSession } from "@/stores/session";
 import { anyModalOpen, useUi } from "@/stores/ui";
 import { COMMANDS, parseCommand, searchTermFor } from "./commands";
@@ -263,7 +264,7 @@ export function TerminalApp() {
                   idx={i}
                   title={s.title}
                   sub={`· ${s.artist}`}
-                  tag={`${s.type} · ${s.provider}`}
+                  tag={`${CAPABILITY_LABEL[s.capability]} · ${s.provider}`}
                   onPick={() => openSong(s, "home")}
                 />
               ))}
@@ -326,8 +327,8 @@ export function TerminalApp() {
               <span className="text-term-dim">· {r.artist}</span>
             </span>
             <span className="whitespace-nowrap text-[12px] text-term-dim">{r.type}</span>
-            <span className="whitespace-nowrap text-[12px] text-term-accent">
-              {r.rating !== null ? `★ ${r.rating.toFixed(1)}` : "—"}
+            <span className="text-[12px]">
+              <CapabilityBadge capability={r.capability} />
             </span>
             <span className="whitespace-nowrap text-right text-[11px] text-term-faint">
               {r.provider}
@@ -383,8 +384,8 @@ export function TerminalApp() {
             <span className="text-term-dim">· {f.artist}</span>
           </Link>
           <span className="whitespace-nowrap text-[12px] text-term-dim">{f.type}</span>
-          <span className="whitespace-nowrap text-[12px] text-term-accent">
-            {f.rating !== null ? `★ ${f.rating.toFixed(1)}` : "—"}
+          <span className="text-[12px]">
+            <CapabilityBadge capability={f.capability} />
           </span>
           <span className="whitespace-nowrap text-[11px] text-term-faint">{f.provider}</span>
           <button

@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { deriveCapability } from "../types";
 import { localProvider } from "./local";
+
+describe("deriveCapability", () => {
+  it("is 'text' for tablature we host without audio", () => {
+    expect(deriveCapability({ content: "e|--0--|", externalOnly: false })).toBe("text");
+  });
+
+  it("is 'link' when the source only lets us point at it", () => {
+    expect(deriveCapability({ content: "e|--0--|", externalOnly: true })).toBe("link");
+  });
+
+  it("is 'link' when there is no content to render", () => {
+    expect(deriveCapability({ content: null, externalOnly: false })).toBe("link");
+  });
+});
 
 describe("localProvider", () => {
   it("finds a song by exact title", async () => {
@@ -24,6 +39,11 @@ describe("localProvider", () => {
   it("omits tab content from search results", async () => {
     const [first] = await localProvider.search("Greensleeves");
     expect(first).not.toHaveProperty("content");
+  });
+
+  it("labels its own tablature as readable but silent", async () => {
+    const [first] = await localProvider.search("Greensleeves");
+    expect(first?.capability).toBe("text");
   });
 
   it("returns full content from getTab", async () => {

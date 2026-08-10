@@ -7,6 +7,7 @@ import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
 import type { Tab } from "@/server/tabs/types";
 import { favKey, useSession } from "@/stores/session";
 import { anyModalOpen } from "@/stores/ui";
+import { CapabilityBadge } from "./capability-badge";
 import { parseSections } from "./parse-sections";
 
 export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
@@ -33,7 +34,7 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
       title: tab.title,
       artist: tab.artist,
       type: tab.type,
-      rating: tab.rating,
+      capability: tab.capability,
     });
 
   const back = () => router.push(backHref);
@@ -109,7 +110,8 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
           <h1 className="text-[19px] font-bold">{tab.title}</h1>
           <span className="text-term-dim">· {tab.artist}</span>
           <span className="flex-1" />
-          <span className="flex flex-wrap gap-x-3.5 gap-y-0.5 text-[11px] text-term-faint">
+          <span className="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-[11px] text-term-faint">
+            <CapabilityBadge capability={tab.capability} detailed />
             {metaBits.map((m) => (
               <span key={m} className="flex-none whitespace-nowrap">
                 {m}
