@@ -1,9 +1,12 @@
-# GTabsTerm
+# GTabsTerm (TabsTerm)
 
 Search a song, get its guitar tablature. Terminal-flavoured, no popups, no ad walls.
 
-The current UI is **structural only** — plain markup with semantic tokens, built so the
-visual pass (Claude Design) can restyle it without touching data or routing.
+The UI implements the **TabsTerm** design from Claude Design (project
+"TabsTerm – Plataforma de tabs", `TabsTerm.dc.html`): a text prompt with ghost-typing,
+four themes (paper / crt / amber / mono) with CRT scanlines, slash commands, a ⌘K
+palette, keyboard-first navigation, and a tab view with a playback bar
+(play / bpm / autoscroll / focus / favorite).
 
 ## Stack
 
@@ -14,9 +17,10 @@ visual pass (Claude Design) can restyle it without touching data or routing.
 | Language      | TypeScript (strict, `noUncheckedIndexedAccess`) | |
 | Styling       | Tailwind CSS v4 (`@theme` tokens)             | Tokens live in one file; restyling is a token edit |
 | Data fetching | TanStack Query                                | Cache, dedupe, abort on the client |
-| URL state     | nuqs                                          | The search query lives in the URL — shareable |
+| URL state     | nuqs                                          | `q` and `view` live in the URL — shareable |
+| Theming       | next-themes                                   | `data-theme` on `<html>`: paper / crt / amber / mono |
 | Validation    | Zod v4                                        | Env, API boundaries, upstream responses |
-| Client state  | Zustand                                       | Available; unused so far |
+| Client state  | Zustand                                       | Session favorites + mock account + modal state |
 | Motion        | Motion (Framer) + GSAP + Lenis                | Layout/gesture animation, timelines, smooth scroll |
 | 3D            | three + React Three Fiber + drei + postprocessing | Ready for an awwwards-grade WebGL layer |
 | Command UI    | cmdk                                          | For a ⌘K palette over the search |
@@ -43,12 +47,16 @@ npm run lint:fix     # Biome autofix + import sorting
 ```
 src/
   app/
-    page.tsx                        search page
-    song/[provider]/[id]/page.tsx   tab view (server component, no HTTP hop)
+    page.tsx                        the terminal (home / results / favs screens)
+    song/[provider]/[id]/page.tsx   tab view (server-fetched, no HTTP hop)
     api/search/route.ts             GET /api/search?q=
     api/tab/[provider]/[id]/route.ts
-    globals.css                     @theme design tokens
-  components/                       presentational; safe to rewrite in design
+    globals.css                     theme tokens (--tt-*) + term-* utilities
+  components/
+    chrome/                         header, about/auth modals, ⌘K palette, theme cycle
+    terminal/                       prompt, ghost typer, slash commands, screens
+    tab/                            tab view, playback bar, section parser
+  stores/                           zustand: session (favs, mock user) + ui (modals)
   hooks/                            client data hooks
   lib/                              env, http, cn/slugify
   server/tabs/
@@ -59,6 +67,12 @@ src/
       songsterr.ts                  Songsterr public JSON API
   data/seed-tabs.ts                 the local library
 ```
+
+### Keyboard
+
+`enter` run · `↑ ↓` / `j k` move · `esc` back · `⌘K` palette · on a tab:
+`space` play · `f` focus · `a` autoscroll · `s` favorite · `t` theme (anywhere).
+Slash commands: `/tab`, `/chords`, `/artist`, `/fav`, `/login`, `/man`, `/theme`.
 
 ### Tab sources
 
@@ -89,12 +103,16 @@ To add a source: write `src/server/tabs/providers/<name>.ts`, register it in
 Copy `.env.example` to `.env.local`. Every variable is parsed by Zod at boot
 (`src/lib/env.ts`) — a bad value fails fast with a readable message.
 
-## Design pass
+## Design
 
-Everything visual is deliberately thin. When restyling:
+The visual layer comes from the Claude Design project "TabsTerm – Plataforma de tabs".
+When adjusting it:
 
-- Colour, type and radius tokens live in the `@theme` block of `src/app/globals.css`.
-- Components under `src/components/` are free to be rewritten wholesale.
+- All theme values are the `--tt-*` variables at the top of `src/app/globals.css`
+  (one block per theme). The `@theme inline` block maps them to `term-*` utilities —
+  components only ever use those names.
+- The mock auth modal is client-side only by design ("no login required to read
+  anything"); favorites are in-memory on purpose ("favorites live in this session only").
 - Do not put fetching or provider logic in components — it belongs in `src/server/tabs/`.
 - `.tab-content` must keep `white-space: pre` and a monospace font. ASCII tablature is a
   fixed-width grid; if it reflows, it is wrong.

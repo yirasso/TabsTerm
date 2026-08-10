@@ -1,21 +1,35 @@
 import { expect, test } from "@playwright/test";
 
-// The dev server for these tests runs with TAB_PROVIDERS=local (see
-// playwright.config.ts), so results come only from src/data/seed-tabs.ts.
+// The e2e web server runs with TAB_PROVIDERS=local (playwright.config.ts),
+// so every result below comes from src/data/seed-tabs.ts.
 
-test("search finds a local tab and opens it", async ({ page }) => {
+test("a single match opens straight from the prompt", async ({ page }) => {
   await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+  await prompt.fill("greensleeves");
 
-  await page.getByLabel("search for a song").fill("greensleeves");
-
-  const result = page.getByRole("link", { name: /Traditional — Greensleeves/i });
-  await expect(result).toBeVisible();
-
-  await result.click();
+  await expect(page.getByRole("button", { name: /greensleeves/i })).toBeVisible();
+  await prompt.press("Enter");
 
   await expect(page).toHaveURL(/\/song\/local\/greensleeves/);
   await expect(page.getByRole("heading", { name: "Greensleeves" })).toBeVisible();
-  await expect(page.getByText("E|-")).toBeVisible();
+  await expect(page.locator(".tab-content").first()).toBeVisible();
+});
+
+test("multiple matches land on the results screen", async ({ page }) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+  await prompt.fill("traditional");
+
+  await expect(page.getByRole("button", { name: /greensleeves/i })).toBeVisible();
+  await prompt.press("Enter");
+
+  await expect(page).toHaveURL(/view=results/);
+  const row = page.getByRole("link", { name: /house of the rising sun/i });
+  await expect(row).toBeVisible();
+  await row.click();
+
+  await expect(page).toHaveURL(/\/song\/local\/house-of-the-rising-sun/);
 });
 
 test("the query is kept in the URL", async ({ page }) => {
@@ -24,8 +38,20 @@ test("the query is kept in the URL", async ({ page }) => {
   await expect(page).toHaveURL(/q=ode(\+|%20)to(\+|%20)joy/);
 });
 
-test("an unknown song reports no results", async ({ page }) => {
+test("an unknown song reports no match", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("search for a song").fill("zzzzqqq");
-  await expect(page.getByText(/No tabs found/i)).toBeVisible();
+  const prompt = page.getByLabel("search for a song");
+  await prompt.fill("zzzzqqq");
+
+  await expect(page.getByText(/no match for/i)).toBeVisible();
+  await prompt.press("Enter");
+
+  await expect(page).toHaveURL(/view=results/);
+  await expect(page.getByText(/no match in index/i)).toBeVisible();
+});
+
+test("the theme button cycles themes", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /theme: paper/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "crt");
 });

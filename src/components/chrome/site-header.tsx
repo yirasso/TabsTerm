@@ -1,0 +1,66 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSession } from "@/stores/session";
+import { useUi } from "@/stores/ui";
+import { AboutModal } from "./about-modal";
+import { AuthModal } from "./auth-modal";
+import { Palette } from "./palette";
+import { useThemeCycle } from "./use-theme-cycle";
+
+export function SiteHeader() {
+  const { aboutOpen, authOpen, paletteOpen, openAbout, openAuth, togglePalette } = useUi();
+  const user = useSession((s) => s.user);
+  const { theme, cycle } = useThemeCycle();
+
+  // next-themes only knows the real theme after mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // ⌘K works everywhere, including inside inputs.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        togglePalette();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [togglePalette]);
+
+  return (
+    <>
+      <header className="sticky top-0 z-[6] flex items-baseline gap-4 border-b border-term-line bg-term-bg px-[22px] py-3.5">
+        <button
+          type="button"
+          onClick={openAbout}
+          className="text-[12px] font-bold uppercase tracking-[0.16em]"
+        >
+          tabsterm
+        </button>
+        <span className="text-[11px] text-term-faint">v0.4.1</span>
+        <span className="flex-1" />
+        <div className="flex items-center gap-3.5 text-[11px] text-term-dim">
+          <button
+            type="button"
+            onClick={cycle}
+            className="whitespace-nowrap border border-term-line px-2 py-[3px] hover:border-term-accent hover:text-term-fg"
+          >
+            theme: {mounted ? theme : "paper"}
+          </button>
+          <button
+            type="button"
+            onClick={openAuth}
+            className="whitespace-nowrap border border-term-line px-2 py-[3px] hover:border-term-accent hover:text-term-fg"
+          >
+            {user ? `@${user.handle}` : "account"}
+          </button>
+        </div>
+      </header>
+      {aboutOpen && <AboutModal />}
+      {authOpen && <AuthModal />}
+      {paletteOpen && <Palette />}
+    </>
+  );
+}

@@ -1,10 +1,16 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+import type { Metadata, Route } from "next";
 import { notFound } from "next/navigation";
-import { TabViewer } from "@/components/tab/tab-viewer";
+import { TabView } from "@/components/tab/tab-view";
 import { getTab } from "@/server/tabs/registry";
 
-type Props = { params: Promise<{ provider: string; id: string }> };
+type Props = {
+  params: Promise<{ provider: string; id: string }>;
+  searchParams: Promise<{ q?: string | string[]; view?: string | string[] }>;
+};
+
+function first(v: string | string[] | undefined) {
+  return Array.isArray(v) ? v[0] : v;
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { provider, id } = await params;
@@ -17,20 +23,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function SongPage({ params }: Props) {
-  const { provider, id } = await params;
+export default async function SongPage({ params, searchParams }: Props) {
+  const [{ provider, id }, sp] = await Promise.all([params, searchParams]);
   const tab = await getTab(provider, decodeURIComponent(id));
-
   if (!tab) notFound();
 
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col px-6 py-16">
-      <Link href="/" className="text-sm text-term-muted hover:text-term-accent">
-        ← back to search
-      </Link>
-      <div className="mt-8">
-        <TabViewer tab={tab} />
-      </div>
-    </main>
-  );
+  // Escape returns to the exact screen the user came from.
+  const qs = new URLSearchParams();
+  const q = first(sp.q);
+  const view = first(sp.view);
+  if (q) qs.set("q", q);
+  if (view === "results" || view === "favs") qs.set("view", view);
+  const backHref = (qs.size ? `/?${qs.toString()}` : "/") as Route;
+
+  return <TabView tab={tab} backHref={backHref} />;
 }
