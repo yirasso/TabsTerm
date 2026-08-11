@@ -13,13 +13,14 @@ export function randomHref(provider: string | null): Route {
  * router push and clobbers it back to `/`. The destination does not read `q`
  * anyway, so leaving it alone is both correct and simpler.
  */
-export const LEAVES_PROMPT = new Set(["/random", "/new"]);
+export const LEAVES_PROMPT = new Set(["/random", "/new", "/listen"]);
 
 /** Slash commands surfaced in the prompt and the ⌘K palette. */
 export const COMMANDS: Command[] = [
   { name: "/tab <song>", hint: "open the matching tab" },
   { name: "/artist <name>", hint: "search by artist" },
   { name: "/new", hint: "write a tab" },
+  { name: "/listen", hint: "transcribe audio into a tab" },
   { name: "/random", hint: "open a tab at random" },
   { name: "/src <name>", hint: "restrict search to one source" },
   { name: "/fav", hint: "list favorited tabs" },

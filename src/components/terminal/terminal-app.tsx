@@ -143,6 +143,7 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
     if (c.cmd === "/man") return openAbout();
     if (c.cmd === "/random") return router.push(randomHref(provider));
     if (c.cmd === "/new") return router.push("/new" as Route);
+    if (c.cmd === "/listen") return router.push("/listen" as Route);
     if (c.cmd === "/src") {
       const wanted = c.arg.toLowerCase();
       if (wanted === SOURCE_ALL) return applySource(SOURCE_ALL);
