@@ -13,6 +13,8 @@ const COLUMNS_PER_BEAT = 8;
 const LOOKAHEAD_SECONDS = 0.4;
 const TICK_MS = 50;
 
+const secondsPer = (bpm: number) => 60 / (bpm * COLUMNS_PER_BEAT);
+
 export type PlaybackState = {
   parsed: ParsedTab;
   playable: boolean;
@@ -75,10 +77,12 @@ export function useTabPlayback(content: string | null, tuning: string[] | null):
     const guitar = guitarRef.current;
     if (!playing || !ctx || !guitar) return;
 
-    const secondsPerColumn = 60 / (bpmRef.current * COLUMNS_PER_BEAT);
     const notes = parsed.notes;
 
     const timer = setInterval(() => {
+      // Read the tempo each tick rather than closing over it, so changing it
+      // takes effect without tearing the scheduler down and restarting.
+      const secondsPerColumn = secondsPer(bpmRef.current);
       const now = ctx.currentTime;
       const horizon = now + LOOKAHEAD_SECONDS;
 
@@ -87,12 +91,17 @@ export function useTabPlayback(content: string | null, tuning: string[] | null):
         if (!note) break;
         const at = startedAtRef.current + note.column * secondsPerColumn;
         if (at > horizon) break;
-        guitar.pluck(note.midi, at);
+        // A note whose moment has passed — the tab was scrolled or the tempo
+        // jumped — is played now rather than dropped.
+        guitar.pluck(note.midi, Math.max(at, now));
         nextNoteRef.current++;
       }
 
-      const elapsed = now - startedAtRef.current;
-      const at = Math.floor(elapsed / secondsPerColumn);
+      const at = Math.floor((now - startedAtRef.current) / secondsPerColumn);
+      // Also nudge the cursor from here. The frame loop below is what makes it
+      // smooth, but it stops entirely when the page is not compositing — a
+      // background tab, or a headless browser — and without this the cursor
+      // would simply never appear there.
       setColumn(at);
 
       if (at > parsed.totalColumns && nextNoteRef.current >= notes.length) stop();
@@ -101,24 +110,55 @@ export function useTabPlayback(content: string | null, tuning: string[] | null):
     return () => clearInterval(timer);
   }, [playing, parsed, stop]);
 
-  // Restarting the scheduler on a tempo change keeps the maths honest: the
-  // cursor and the notes are both derived from the same secondsPerColumn.
+  // The cursor also moves once per frame, and this is the update that counts.
+  //
+  // Driving it only from the scheduler's 50ms tick left it visibly behind the
+  // sound — a tick plus a React render is most of a column at any sensible
+  // tempo, and the eye notices a note landing before the bar reaches it. A
+  // frame callback runs immediately before paint, so the position drawn is the
+  // position now. Both read the same audio clock and the same formula, so the
+  // two writers can only ever agree.
+  useEffect(() => {
+    const ctx = ctxRef.current;
+    if (!playing || !ctx) return;
+
+    let frame = 0;
+    const follow = () => {
+      const at = Math.floor((ctx.currentTime - startedAtRef.current) / secondsPer(bpmRef.current));
+      setColumn(at);
+      frame = requestAnimationFrame(follow);
+    };
+    frame = requestAnimationFrame(follow);
+
+    return () => cancelAnimationFrame(frame);
+  }, [playing]);
+
+  /**
+   * Change tempo without losing your place: rebase the start time so the cursor
+   * stays on its column and simply continues at the new rate, then re-point the
+   * scheduler at the first note that has not been played yet.
+   */
   const changeBpm = useCallback(
     (next: number | ((prev: number) => number)) => {
-      setBpm((prev) => {
-        const value = typeof next === "function" ? next(prev) : next;
-        return Math.min(220, Math.max(40, value));
-      });
-      if (playing) {
+      const previous = bpmRef.current;
+      const wanted = typeof next === "function" ? next(previous) : next;
+      const value = Math.min(220, Math.max(40, wanted));
+      if (value === previous) return;
+
+      const ctx = ctxRef.current;
+      if (playing && ctx) {
+        const column = (ctx.currentTime - startedAtRef.current) / secondsPer(previous);
         guitarRef.current?.stopAll();
-        const ctx = ctxRef.current;
-        if (ctx) {
-          startedAtRef.current = ctx.currentTime + 0.05;
-          nextNoteRef.current = 0;
-        }
+        startedAtRef.current = ctx.currentTime - column * secondsPer(value);
+
+        const from = parsed.notes.findIndex((n) => n.column > column);
+        nextNoteRef.current = from === -1 ? parsed.notes.length : from;
       }
+
+      bpmRef.current = value;
+      setBpm(value);
     },
-    [playing],
+    [playing, parsed.notes],
   );
 
   useEffect(() => {

@@ -65,6 +65,32 @@ E|------|`);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("returns notes in time order, not string order", () => {
+    // A player walks this array and stops at the first note beyond its
+    // lookahead. String-major order makes time jump backwards at every string
+    // change, so the rest of a chord never gets scheduled.
+    const { notes } = parseTabNotes(`e|--0---3---|
+B|--1---0---|
+G|--0---0---|
+D|--2---0---|
+A|--3---2---|
+E|------3---|`);
+
+    const columns = notes.map((n) => n.column);
+    expect(columns).toEqual([...columns].sort((a, b) => a - b));
+  });
+
+  it("keeps a chord's notes together and in string order", () => {
+    const { notes } = parseTabNotes(`e|--0--|
+B|--1--|
+G|--2--|
+D|-----|
+A|-----|
+E|-----|`);
+    expect(notes.map((n) => n.line)).toEqual([0, 1, 2]);
+    expect(new Set(notes.map((n) => n.column)).size).toBe(1);
+  });
+
   it("lays consecutive staves end to end on one timeline", () => {
     const { blocks, notes, totalColumns } = parseTabNotes(`${STAVE}\n\n${STAVE}`);
     const staves = blocks.flatMap((b) => (b.kind === "stave" ? [b] : []));

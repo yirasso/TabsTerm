@@ -174,6 +174,14 @@ export function parseTabNotes(content: string | null, tuning: string[] | null = 
   flushStave();
   flushText();
 
+  // Sort by column. The reader is built line by line, so notes come out
+  // string-major — every note on the top string, then every note on the next,
+  // and so on. A player walking that array in order sees time jump backwards at
+  // every string change, and a scheduler that stops at the first note beyond its
+  // lookahead never reaches the rest of a chord. String order breaks ties, so
+  // the sequence is deterministic.
+  notes.sort((a, b) => a.column - b.column || a.line - b.line);
+
   return { blocks, notes, totalColumns: offset };
 }
 
