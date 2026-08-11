@@ -40,7 +40,7 @@ describe("localProvider", () => {
 
   it("matches on partial tokens across title and artist", async () => {
     const results = await localProvider.search("pachelbel canon");
-    expect(results.map((r) => r.id)).toContain("canon-in-d-bass");
+    expect(results.map((r) => r.id)).toContain("canon-in-d");
   });
 
   it("returns nothing for an empty query", async () => {
@@ -57,9 +57,12 @@ describe("localProvider", () => {
     expect(first?.capability).toBe("full");
   });
 
-  it("labels a chord sheet as readable but silent", async () => {
-    const [first] = await localProvider.search("House of the Rising Sun");
-    expect(first?.type).toBe("chords");
+  it("has nothing in the library the player cannot play", async () => {
+    // The library is guitar tablature only, so every entry must carry a stave.
+    for (const title of ["greensleeves", "scarborough", "ode to joy", "canon"]) {
+      const [found] = await localProvider.search(title);
+      expect(found?.capability).toBe("full");
+    }
   });
 
   it("returns full content from getTab", async () => {

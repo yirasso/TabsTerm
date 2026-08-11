@@ -6,8 +6,6 @@
 import { staveLabels } from "./edit";
 import type { FrettedNote } from "./fretting";
 
-export type ChordEvent = { name: string; time: number };
-
 const COLUMNS_PER_BAR = 16;
 const BARS_PER_LINE = 2;
 
@@ -69,31 +67,4 @@ export function notesToAscii(notes: FrettedNote[], options: AsciiOptions): strin
   }
 
   return staves.join("\n\n");
-}
-
-/**
- * A chord sheet. Chord recognition gives names and times, not notes, so this is
- * a different artefact from tablature and the wording says so.
- */
-export function chordsToAscii(chords: ChordEvent[], perLine = 4): string {
-  if (chords.length === 0) return "";
-
-  // Collapse repeats: a chord held for eight beats is one chord, not eight.
-  const collapsed: ChordEvent[] = [];
-  for (const chord of chords) {
-    if (collapsed.at(-1)?.name !== chord.name) collapsed.push(chord);
-  }
-
-  const lines: string[] = [];
-  for (let i = 0; i < collapsed.length; i += perLine) {
-    lines.push(
-      collapsed
-        .slice(i, i + perLine)
-        .map((c) => c.name.padEnd(8))
-        .join("")
-        .trimEnd(),
-    );
-  }
-
-  return lines.join("\n");
 }

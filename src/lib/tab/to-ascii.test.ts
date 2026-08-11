@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { assignFrets, type PitchEvent } from "./fretting";
 import { parseTabNotes, STANDARD_TUNING } from "./parse-notes";
-import { chordsToAscii, notesToAscii } from "./to-ascii";
+import { notesToAscii } from "./to-ascii";
 
 const TUNING = ["E", "A", "D", "G", "B", "E"];
 const at = (midi: number, time: number): PitchEvent => ({ midi, time, duration: 0.25 });
@@ -43,31 +43,5 @@ describe("notesToAscii", () => {
     );
     const staves = notesToAscii(notes, { tuning: TUNING }).split("\n\n");
     expect(staves.length).toBeGreaterThan(1);
-  });
-});
-
-describe("chordsToAscii", () => {
-  it("returns nothing for no chords", () => {
-    expect(chordsToAscii([])).toBe("");
-  });
-
-  it("collapses a chord held across several frames into one", () => {
-    const held = chordsToAscii([
-      { name: "Am", time: 0 },
-      { name: "Am", time: 0.5 },
-      { name: "Am", time: 1 },
-      { name: "C", time: 1.5 },
-    ]);
-    expect(held.match(/Am/g)).toHaveLength(1);
-    expect(held).toContain("C");
-  });
-
-  it("wraps after the requested number per line", () => {
-    const names = ["Am", "C", "D", "F", "G", "E"];
-    const sheet = chordsToAscii(
-      names.map((name, i) => ({ name, time: i })),
-      4,
-    );
-    expect(sheet.split("\n")).toHaveLength(2);
   });
 });

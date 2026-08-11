@@ -46,22 +46,19 @@ const SYNTH = `(midiGroups, seconds, wave, inputId) => {
 test("the page promises that audio stays on the machine", async ({ page }) => {
   await page.goto("/listen");
   await expect(page.getByText(/audio never leaves this browser/i)).toBeVisible();
-  // The two paths must not be confused with each other.
-  await expect(page.getByText(/CHORDS, not tablature/)).toBeVisible();
-  await page.getByRole("button", { name: /my guitar, live/i }).click();
-  await expect(page.getByText(/real TABLATURE/)).toBeVisible();
+  // It must set expectations about what it can and cannot pull apart.
+  await expect(page.getByText(/a full band mix will come back as noise/i)).toBeVisible();
 });
 
 test("a solo melody becomes tablature with the right frets", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/listen");
-  await page.getByRole("button", { name: /my guitar, live/i }).click();
 
   // E4 G4 B4 E5 — all reachable on the top string at frets 0, 3, 7 and 12.
   await page.evaluate(
     ([fn, notes]) =>
       // biome-ignore lint/security/noGlobalEval: driving the page's own APIs
-      eval(fn as string)(notes, 0.6, "triangle", "solo-file"),
+      eval(fn as string)(notes, 0.6, "triangle", "audio-file"),
     [SYNTH, [[64], [67], [71], [76]]] as const,
   );
 
@@ -76,33 +73,27 @@ test("a solo melody becomes tablature with the right frets", async ({ page }) =>
   await expect(page.getByText("grid is square.")).toBeVisible();
 });
 
-test("a chord progression becomes a chord sheet", async ({ page }) => {
+test("notes struck together land on different strings", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/listen");
 
-  // Am, C, G, F as plain triads.
+  // An open E minor triad, all three notes at once.
   await page.evaluate(
-    ([fn, chords]) =>
+    ([fn, chord]) =>
       // biome-ignore lint/security/noGlobalEval: driving the page's own APIs
-      eval(fn as string)(chords, 2, "sawtooth", "audio-file"),
-    [
-      SYNTH,
-      [
-        [57, 60, 64],
-        [60, 64, 67],
-        [55, 59, 62],
-        [53, 57, 60],
-      ],
-    ] as const,
+      eval(fn as string)(chord, 1.5, "triangle", "audio-file"),
+    [SYNTH, [[64, 59, 55]]] as const,
   );
 
   await expect(page).toHaveURL(/\/new\?id=/, { timeout: 90_000 });
 
   const value = await page.getByLabel("tablature").inputValue();
-  expect(value).toContain("[chords]");
-  for (const chord of ["Am", "C", "F"]) {
-    expect(value).toContain(chord);
-  }
+  // Two frets cannot share a string at the same instant, so a chord must show
+  // up on more than one stave line.
+  const linesWithFrets = value
+    .split("\n")
+    .filter((line) => /^[A-Ga-g]\|/.test(line) && /\d/.test(line));
+  expect(linesWithFrets.length).toBeGreaterThan(1);
 });
 
 test("/listen reaches the page from the prompt", async ({ page }) => {

@@ -6,16 +6,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TabRender } from "@/components/tab/tab-render";
 import { alignStaves, blankStave, insertAt, validateTab } from "@/lib/tab/edit";
 import { parseTabNotes } from "@/lib/tab/parse-notes";
-import type { TabType } from "@/server/tabs/types";
 import { type Draft, useDrafts } from "@/stores/drafts";
 
-const TYPES: TabType[] = ["tab", "chords", "bass", "ukulele"];
 const TUNINGS: Record<string, string[]> = {
   standard: ["E", "A", "D", "G", "B", "E"],
   "drop d": ["D", "A", "D", "G", "B", "E"],
   dadgad: ["D", "A", "D", "G", "A", "D"],
   "half step down": ["D#", "G#", "C#", "F#", "A#", "D#"],
-  bass: ["E", "A", "D", "G"],
+  "open g": ["D", "G", "D", "G", "B", "D"],
 };
 
 function tuningName(tuning: string[] | null) {
@@ -104,20 +102,6 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
             placeholder="Traditional"
             className="w-full border-0 bg-transparent text-[13px] caret-term-accent outline-none"
           />
-        </Field>
-        <Field label="type" htmlFor="tab-type">
-          <select
-            id="tab-type"
-            value={draft.type}
-            onChange={(e) => patch({ type: e.target.value as TabType })}
-            className="w-full border-0 bg-transparent text-[13px] outline-none"
-          >
-            {TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
         </Field>
         <Field label="tuning" htmlFor="tab-tuning">
           <select

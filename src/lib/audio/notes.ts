@@ -6,11 +6,6 @@ import type { MonoAudio } from "./decode";
 /**
  * Note detection with Spotify's Basic Pitch, running entirely in the browser.
  *
- * This is via 3: the user records their own guitar, and we work out what they
- * played. It is the only path that yields real tablature — a full-band mix
- * cannot be separated into notes, which is why the file path gives chords
- * instead.
- *
  * The model ships inside the npm package and is copied into /public at build
  * time, so nothing is fetched from a third party at runtime.
  */
@@ -22,6 +17,25 @@ const ONSET_THRESHOLD = 0.5;
 const FRAME_THRESHOLD = 0.3;
 /** Frames, not seconds — anything shorter is a transient, not a note. */
 const MIN_NOTE_FRAMES = 5;
+/**
+ * Drop the quietest detections. On a clean solo recording this changes little;
+ * on anything noisier it is the difference between a tab and a smear, because
+ * every stray resonance the model half-hears would otherwise become a fret.
+ */
+const MIN_AMPLITUDE = 0.25;
+/** A guitar in standard tuning: low E up to the top string's high frets. */
+const LOWEST_MIDI = 40;
+const HIGHEST_MIDI = 88;
+/**
+ * The model sometimes hears a ringing string re-attack, reporting one struck
+ * note as two. Left alone that becomes two frets side by side, which reads as a
+ * note nobody played.
+ *
+ * A fixed time window is the wrong test — at 120bpm a genuine sixteenth-note
+ * repeat is only 125ms — so the rule is physical instead: the same pitch cannot
+ * start again while it is still sounding, because one string can only be in one
+ * place. Anything overlapping its own tail is an artefact.
+ */
 
 export type NoteProgress = (percent: number) => void;
 
@@ -55,11 +69,34 @@ export async function detectNotes(
     ),
   );
 
-  return notes
+  const kept = notes
+    .filter(
+      (note) =>
+        note.amplitude >= MIN_AMPLITUDE &&
+        note.pitchMidi >= LOWEST_MIDI &&
+        note.pitchMidi <= HIGHEST_MIDI,
+    )
     .map((note) => ({
       midi: note.pitchMidi,
       time: note.startTimeSeconds,
       duration: note.durationSeconds,
     }))
     .sort((a, b) => a.time - b.time);
+
+  return dropRestrikes(kept);
+}
+
+/** Drop a note that starts while the same pitch is still ringing. */
+export function dropRestrikes(events: PitchEvent[]): PitchEvent[] {
+  const soundingUntil = new Map<number, number>();
+  const out: PitchEvent[] = [];
+
+  for (const event of events) {
+    const until = soundingUntil.get(event.midi);
+    if (until !== undefined && event.time < until) continue;
+    soundingUntil.set(event.midi, event.time + event.duration);
+    out.push(event);
+  }
+
+  return out;
 }

@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { isPlayable } from "@/lib/tab/parse-notes";
 
-export const tabTypeSchema = z.enum(["tab", "chords", "bass", "drums", "ukulele", "pro"]);
+/**
+ * Guitar tablature and nothing else, for now. Kept as an enum rather than
+ * dropped so bass or ukulele can come back as one added member, instead of
+ * having to re-thread a field through the schema, the editor and the UI.
+ *
+ * With a single member it says nothing, so it is not displayed anywhere.
+ */
+export const tabTypeSchema = z.enum(["tab"]);
 export type TabType = z.infer<typeof tabTypeSchema>;
 
 /**

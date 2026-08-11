@@ -11,7 +11,7 @@ export type SeedTab = {
   title: string;
   artist: string;
   album: string | null;
-  type: "tab" | "chords" | "bass" | "drums" | "ukulele" | "pro";
+  type: "tab";
   tuning: string[] | null;
   capo: number | null;
   difficulty: "beginner" | "intermediate" | "advanced" | null;
@@ -52,23 +52,13 @@ E|-----------------|-----------------|`,
     title: "House of the Rising Sun",
     artist: "Traditional",
     album: null,
-    type: "chords",
+    type: "tab",
     tuning: STANDARD,
     capo: 0,
     difficulty: "beginner",
-    content: `[Chords]
+    content: `[Chord shapes behind the pattern]
 Am     C      D      F      E
 x02210 x32010 xx0232 133211 022100
-
-[Verse 1]
-Am        C          D            F
-There is a house in New Orleans
-Am        C       E
-They call the Rising Sun
-Am         C        D          F
-And it's been the ruin of many a poor boy
-Am      E        Am
-And God I know I'm one
 
 [Picking pattern]
 e|-------0-------0-|-------0-------0-|
@@ -130,53 +120,29 @@ A|-----------------|-----------------|
 E|-----------------|-----------------|`,
   },
   {
-    // No stave on purpose: this is what a `text`-capability tab looks like, and
-    // proves the player never offers transport it cannot honour.
-    id: "amazing-grace",
-    title: "Amazing Grace",
-    artist: "Traditional",
-    album: null,
-    type: "chords",
-    tuning: STANDARD,
-    capo: 0,
-    difficulty: "beginner",
-    content: `[Chords]
-G      G7     C      D7
-320003 320001 x32010 xx0212
-
-[Verse 1]
-G                 G7        C        G
-Amazing grace, how sweet the sound
-G                          D7
-That saved a wretch like me
-G           G7      C        G
-I once was lost, but now am found
-G        D7      G
-Was blind, but now I see
-
-[Strumming]
-D  DU  UDU   — one bar per chord, 3/4 time`,
-  },
-  {
-    id: "canon-in-d-bass",
+    id: "canon-in-d",
     title: "Canon in D",
     artist: "Johann Pachelbel",
     album: null,
-    type: "bass",
-    tuning: ["E", "A", "D", "G"],
+    type: "tab",
+    tuning: STANDARD,
     capo: 0,
     difficulty: "beginner",
-    content: `[Bass line — the eight-chord loop]
-G|-----------------------------------|
-D|-----------------------------------|
-A|-5-------0-------2-------------0---|
-E|-----------------------3-----------|
-   D       A       Bm      F#m     G
+    content: `[The eight-chord loop, arpeggiated]
+e|-----------------|-----------------|
+B|-------3-----3---|-------2-----2---|
+G|-----2-----2-----|-----2-----2-----|
+D|---0-----0-------|---4-----4-------|
+A|-----------------|-----------------|
+E|-2---------------|-0---------------|
+   D                 A
 
-G|-----------------------------------|
-D|-----------------------------------|
-A|-------0-------5-------------------|
-E|-3-------------------------5-------|
-   G       D       G       A`,
+e|-----------------|-----------------|
+B|-------3-----3---|-------2-----2---|
+G|-----4-----4-----|-----2-----2-----|
+D|---4-----4-------|---2-----2-------|
+A|-2---------------|-0---------------|
+E|-----------------|-----------------|
+   Bm                F#m`,
   },
 ];

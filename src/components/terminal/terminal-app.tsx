@@ -425,14 +425,13 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
           <Link
             key={`${r.provider}:${r.id}`}
             href={songHref(r, "results")}
-            className={`grid grid-cols-[22px_1fr_110px_70px_100px] items-baseline gap-3.5 border-b border-term-line py-2 pl-1 pr-2 text-term-fg ${i === sel ? "tt-selected" : ""}`}
+            className={`grid grid-cols-[22px_1fr_70px_100px] items-baseline gap-3.5 border-b border-term-line py-2 pl-1 pr-2 text-term-fg ${i === sel ? "tt-selected" : ""}`}
           >
             <span className="text-term-accent">{i === sel ? "›" : " "}</span>
             <span>
               <span className="font-medium">{r.title}</span>{" "}
               <span className="text-term-dim">· {r.artist}</span>
             </span>
-            <span className="whitespace-nowrap text-[12px] text-term-dim">{r.type}</span>
             <span className="text-[12px]">
               <CapabilityBadge capability={r.capability} />
             </span>

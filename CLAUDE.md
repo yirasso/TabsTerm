@@ -32,7 +32,13 @@ npm run check     # typecheck + biome + vitest
   source would let anyone switch on what the operator turned off. There is an e2e test
   pinning this.
 - **Capability is decided in one place**, `deriveCapability` in `src/server/tabs/types.ts`.
-  Providers call it instead of hard-coding a badge value.
+  It asks the parser whether it found notes, so `full` cannot promise sound the player
+  cannot deliver.
+- **Guitar tablature only.** No chord sheets, bass or ukulele. `tabTypeSchema` keeps a
+  single member so one can come back cheaply, but nothing displays it.
+- **Audio analysis is one path, and it produces tabs.** `/listen` runs Basic Pitch over
+  a recording of one instrument. There is no chord-detection path — that was removed
+  along with essentia.js.
 - **The source filter (`/src`) is session-only on purpose.** With no indicator in the
   header, a filter that survived a reload would silently haunt the reader. Do not add
   `persist` to `src/stores/prefs.ts` without also adding a visible indicator.

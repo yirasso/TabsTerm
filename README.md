@@ -74,8 +74,13 @@ src/
 `esc` back · `⌘K` palette · on a tab: `space` play · `f` focus · `a` autoscroll ·
 `s` favorite · `t` theme (anywhere).
 
-Slash commands: `/tab`, `/artist`, `/random`, `/src`, `/fav`, `/auth`, `/man`,
-`/theme`.
+Slash commands: `/tab`, `/artist`, `/new`, `/listen`, `/random`, `/src`, `/fav`,
+`/auth`, `/man`, `/theme`.
+
+**Guitar tablature only.** `tabTypeSchema` has a single member: no chord sheets,
+no bass, no ukulele. It stays an enum so one of those can come back as an added
+member rather than a field re-threaded through the schema, the editor and the
+UI — and since a single value says nothing, it is not displayed anywhere.
 
 **Tab completion** works the way a shell's does, and lives in
 `src/components/terminal/completion.ts` as pure functions. `/art` + Tab finishes

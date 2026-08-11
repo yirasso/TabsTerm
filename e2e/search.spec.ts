@@ -60,12 +60,14 @@ test("results and the tab page say what the reader gets", async ({ page }) => {
   await expect(page.getByTitle("tab + audio")).toBeVisible();
 });
 
-test("a chord sheet is labelled silent, and offers no transport", async ({ page }) => {
-  await page.goto("/song/local/amazing-grace");
-
-  await expect(page.getByTitle("tab, no audio")).toBeVisible();
-  await expect(page.getByRole("button", { name: "▶ play" })).toHaveCount(0);
-  await expect(page.getByText(/no stave to play/i)).toBeVisible();
+test("every tab in the library is playable", async ({ page }) => {
+  // The library is guitar tablature only, so nothing should land on the silent
+  // branch. If one does, either the tab is broken or the parser is.
+  for (const id of ["greensleeves", "scarborough-fair", "ode-to-joy", "canon-in-d"]) {
+    await page.goto(`/song/local/${id}`);
+    await expect(page.getByTitle("tab + audio")).toBeVisible();
+    await expect(page.getByRole("button", { name: "▶ play" })).toBeVisible();
+  }
 });
 
 test("the digital guitar plays a tab and walks a cursor across it", async ({ page }) => {

@@ -6,19 +6,17 @@ import { useRef, useState } from "react";
 import { decodeBlob, decodeFile, type MonoAudio } from "@/lib/audio/decode";
 import { assignFrets } from "@/lib/tab/fretting";
 import { STANDARD_TUNING } from "@/lib/tab/parse-notes";
-import { chordsToAscii, notesToAscii } from "@/lib/tab/to-ascii";
+import { notesToAscii } from "@/lib/tab/to-ascii";
 import { emptyDraft, newDraftId, useDrafts } from "@/stores/drafts";
 
 const TUNING = ["E", "A", "D", "G", "B", "E"];
 
-type Mode = "file" | "mic";
 type Phase = "idle" | "recording" | "working" | "failed";
 
 export function TranscribeScreen() {
   const router = useRouter();
   const upsert = useDrafts((s) => s.upsert);
 
-  const [mode, setMode] = useState<Mode>("file");
   const [phase, setPhase] = useState<Phase>("idle");
   const [status, setStatus] = useState("");
   const [percent, setPercent] = useState(0);
@@ -31,50 +29,8 @@ export function TranscribeScreen() {
     setStatus(message);
   };
 
-  /** Both paths end here: build a draft and hand it to the editor to fix up. */
-  const openAsDraft = (content: string, title: string, type: "tab" | "chords") => {
-    const id = newDraftId();
-    upsert({
-      ...emptyDraft(id),
-      title,
-      type,
-      tuning: TUNING,
-      content,
-    });
-    router.push(`/new?id=${id}` as Route);
-  };
-
-  const runFile = async (file: File) => {
-    setPhase("working");
-    setPercent(0);
-    setStatus("decoding…");
-    try {
-      const audio = await decodeFile(file);
-      setStatus("listening for chords…");
-      const { detectChords } = await import("@/lib/audio/chords");
-      const chords = await detectChords(audio, setPercent);
-
-      if (chords.length === 0) return fail("no chords found — try a cleaner recording");
-
-      const name = file.name.replace(/\.[^.]+$/, "");
-      openAsDraft(`[chords]\n${chordsToAscii(chords)}`, name, "chords");
-    } catch (error) {
-      fail(error instanceof Error ? error.message : "analysis failed");
-    }
-  };
-
-  const runSoloFile = async (file: File) => {
-    setPhase("working");
-    setPercent(0);
-    setStatus("decoding…");
-    try {
-      await transcribeRecording(await decodeFile(file), file.name.replace(/\.[^.]+$/, ""));
-    } catch (error) {
-      fail(error instanceof Error ? error.message : "analysis failed");
-    }
-  };
-
-  const transcribeRecording = async (audio: MonoAudio, title = "Untitled take") => {
+  /** Everything lands here: build a draft and hand it to the editor to fix up. */
+  const transcribe = async (audio: MonoAudio, title: string) => {
     setStatus("working out the notes…");
     const { detectNotes } = await import("@/lib/audio/notes");
     const events = await detectNotes(audio, setPercent);
@@ -85,7 +41,26 @@ export function TranscribeScreen() {
     const fretted = assignFrets(events, STANDARD_TUNING);
     if (fretted.length === 0) return fail("nothing that fits on a guitar neck");
 
-    openAsDraft(`[take 1]\n${notesToAscii(fretted, { tuning: TUNING })}`, title, "tab");
+    const id = newDraftId();
+    upsert({
+      ...emptyDraft(id),
+      title,
+      tuning: TUNING,
+      content: `[take 1]\n${notesToAscii(fretted, { tuning: TUNING })}`,
+    });
+    router.push(`/new?id=${id}` as Route);
+  };
+
+  const runFile = async (file: File) => {
+    setPhase("working");
+    setPercent(0);
+    setStatus("decoding…");
+    try {
+      const audio = await decodeFile(file);
+      await transcribe(audio, file.name.replace(/\.[^.]+$/, ""));
+    } catch (error) {
+      fail(error instanceof Error ? error.message : "analysis failed");
+    }
   };
 
   const startRecording = async () => {
@@ -98,10 +73,11 @@ export function TranscribeScreen() {
       recorder.onstop = async () => {
         for (const track of stream.getTracks()) track.stop();
         setPhase("working");
+        setPercent(0);
         setStatus("decoding…");
         try {
-          const audio = await decodeBlob(new Blob(chunksRef.current, { type: recorder.mimeType }));
-          await transcribeRecording(audio);
+          const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+          await transcribe(await decodeBlob(blob), "Untitled take");
         } catch (error) {
           fail(error instanceof Error ? error.message : "analysis failed");
         }
@@ -131,92 +107,52 @@ export function TranscribeScreen() {
 on your machine — nothing is uploaded, and there is nothing for us to keep.`}
       </pre>
 
-      <div className="mb-6 flex border border-term-line text-[12px]">
-        <button
-          type="button"
-          onClick={() => setMode("file")}
-          className={`flex-1 py-1.5 ${mode === "file" ? "tt-selected text-term-fg" : "text-term-faint"}`}
-        >
-          a file I have
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("mic")}
-          className={`flex-1 py-1.5 ${mode === "mic" ? "tt-selected text-term-fg" : "text-term-faint"}`}
-        >
-          my guitar, live
-        </button>
-      </div>
+      <pre className="mb-6 whitespace-pre-wrap text-[12px] text-term-faint leading-[1.8]">
+        {`give it one guitar on its own and it will work out the notes and where to
+play them. a full band mix will come back as noise — every instrument at once
+is more than any note detector can pull apart.
 
-      {mode === "file" ? (
-        <section>
-          <pre className="mb-4 whitespace-pre-wrap text-[12px] text-term-faint leading-[1.8]">
-            {`a full band mix cannot be pulled apart into single notes, so this gives you
-CHORDS, not tablature. good enough to play along with; not a transcription.`}
-          </pre>
-          <label
-            htmlFor="audio-file"
-            className="inline-block cursor-pointer border border-term-line px-3 py-[7px] text-[12px] hover:border-term-accent hover:text-term-accent"
+play slowly and cleanly. a pickup beats a phone microphone.`}
+      </pre>
+
+      <div className="flex flex-wrap items-center gap-3">
+        {phase === "recording" ? (
+          <button
+            type="button"
+            onClick={stopRecording}
+            className="border border-term-accent px-3 py-[7px] text-[12px] text-term-accent"
           >
-            choose an audio file
-          </label>
-          <input
-            id="audio-file"
-            type="file"
-            accept="audio/*"
-            className="sr-only"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void runFile(file);
-            }}
-          />
-        </section>
-      ) : (
-        <section>
-          <pre className="mb-4 whitespace-pre-wrap text-[12px] text-term-faint leading-[1.8]">
-            {`one instrument on its own can be pulled apart into notes, so this gives you
-real TABLATURE. play slowly and cleanly; a pickup beats a phone microphone.`}
-          </pre>
-          <div className="flex flex-wrap items-center gap-3">
-            {phase === "recording" ? (
-              <button
-                type="button"
-                onClick={stopRecording}
-                className="border border-term-accent px-3 py-[7px] text-[12px] text-term-accent"
-              >
-                ■ stop and transcribe
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => void startRecording()}
-                className="border border-term-line px-3 py-[7px] text-[12px] hover:border-term-accent hover:text-term-accent"
-              >
-                ● record
-              </button>
-            )}
-            <span className="text-[11px] text-term-faint">or</span>
-            {/* Someone who already recorded their playing should not have to
-                play it again into a microphone. */}
-            <label
-              htmlFor="solo-file"
-              className="cursor-pointer border border-term-line px-3 py-[7px] text-[12px] hover:border-term-accent hover:text-term-accent"
-            >
-              choose a recording
-            </label>
-            <input
-              id="solo-file"
-              type="file"
-              accept="audio/*"
-              className="sr-only"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void runSoloFile(file);
-              }}
-            />
-          </div>
-        </section>
-      )}
+            ■ stop and transcribe
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void startRecording()}
+            className="border border-term-line px-3 py-[7px] text-[12px] hover:border-term-accent hover:text-term-accent"
+          >
+            ● record
+          </button>
+        )}
+        <span className="text-[11px] text-term-faint">or</span>
+        {/* Someone who already recorded their playing should not have to play
+            it again into a microphone. */}
+        <label
+          htmlFor="audio-file"
+          className="cursor-pointer border border-term-line px-3 py-[7px] text-[12px] hover:border-term-accent hover:text-term-accent"
+        >
+          choose a recording
+        </label>
+        <input
+          id="audio-file"
+          type="file"
+          accept="audio/*"
+          className="sr-only"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void runFile(file);
+          }}
+        />
+      </div>
 
       <div aria-live="polite" className="mt-8 min-h-[48px] text-[12px]">
         {phase === "working" && (
