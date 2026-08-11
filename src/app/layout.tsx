@@ -30,8 +30,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${jetbrainsMono.variable} antialiased`}>
+    // The font variable goes on <html>, not <body>: `--font-mono` is emitted at
+    // :root, so the variable it references has to be in scope there too.
+    <html lang="en" className={jetbrainsMono.variable} suppressHydrationWarning>
+      <body className="antialiased">
         <Providers>
           <div className="tt-scanlines" aria-hidden />
           <SiteHeader />

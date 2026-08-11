@@ -56,9 +56,19 @@
   color-scheme: light;
 }
 
+/*
+ * Fonts are NOT `inline`. `@theme inline` substitutes values straight into the
+ * utilities it generates and never emits the custom property, so hand-written
+ * CSS asking for `var(--font-mono)` gets nothing, the whole `font-family`
+ * declaration becomes invalid, and tablature silently renders in a proportional
+ * font — where a `0` is wider than a `-` and no two stave lines line up.
+ */
+@theme {
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
 /* `inline` so utilities compile to var(--tt-*) and theme switching is live. */
 @theme inline {
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
   --color-term-bg: var(--tt-bg);
   --color-term-fg: var(--tt-fg);
   --color-term-dim: var(--tt-dim);

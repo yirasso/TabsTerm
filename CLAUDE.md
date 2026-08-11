@@ -32,6 +32,11 @@ npm run check     # typecheck + biome + vitest
   `@theme inline` block maps them to `term-*` utilities; components reference those
   names (`text-term-accent`), never raw colours. Restyling should be a token edit plus
   component markup — never a change to `src/server/` or `src/lib/`.
+- **`@theme inline` does not emit the custom property.** It substitutes values into the
+  utilities it generates, so anything hand-written CSS reads with `var(--token)` must
+  live in a plain `@theme` block instead. `--font-mono` is in one for exactly this
+  reason: when it was inline, `font-family: var(--font-mono)` resolved to nothing, the
+  declaration went invalid, and every tab silently rendered in a proportional font.
 - **Search results must not carry tab content.** `localProvider.search` parses through
   `songSummarySchema` specifically to strip it.
 - **`searchAllProviders` may only narrow `TAB_PROVIDERS`, never widen it.** The

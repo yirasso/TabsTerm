@@ -70,6 +70,58 @@ test("every tab in the library is playable", async ({ page }) => {
   }
 });
 
+test("tablature renders in a real monospace font", async ({ page }) => {
+  // Not a style preference: a proportional font makes `0` wider than `-`, so
+  // stave lines with frets on them come out longer and the bar lines stop
+  // agreeing. It fails silently, and only in the browser — which is why this
+  // measures pixels rather than trusting the CSS.
+  await page.goto("/song/local/canon-in-d");
+
+  const measured = await page.evaluate(() => {
+    const pre = document.querySelector("main pre.tab-content");
+    if (!pre) return null;
+    const style = getComputedStyle(pre);
+    const ctx = document.createElement("canvas").getContext("2d");
+    if (!ctx) return null;
+    ctx.font = `${style.fontSize} ${style.fontFamily}`;
+    return {
+      dash: ctx.measureText("-").width,
+      zero: ctx.measureText("0").width,
+      bar: ctx.measureText("|").width,
+    };
+  });
+
+  expect(measured).not.toBeNull();
+  expect(measured?.zero).toBe(measured?.dash);
+  expect(measured?.bar).toBe(measured?.dash);
+});
+
+test("every stave line ends in the same place", async ({ page }) => {
+  await page.goto("/song/local/canon-in-d");
+
+  const widths = await page.evaluate(() => {
+    const pre = document.querySelector("main pre.tab-content");
+    const node = pre?.firstChild;
+    if (!pre || !node) return [];
+
+    const out: number[] = [];
+    let offset = 0;
+    for (const line of (pre.textContent ?? "").split("\n")) {
+      if (/^[A-Ga-g]\|/.test(line)) {
+        const range = document.createRange();
+        range.setStart(node, offset);
+        range.setEnd(node, offset + line.length);
+        out.push(Math.round(range.getBoundingClientRect().width));
+      }
+      offset += line.length + 1;
+    }
+    return out;
+  });
+
+  expect(widths.length).toBeGreaterThan(4);
+  expect(new Set(widths).size).toBe(1);
+});
+
 test("the digital guitar plays a tab and walks a cursor across it", async ({ page }) => {
   await page.goto("/song/local/greensleeves");
 
