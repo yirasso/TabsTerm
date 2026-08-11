@@ -5,6 +5,7 @@
 
 import { staveLabels } from "./edit";
 import type { FrettedNote } from "./fretting";
+import { CELL_WIDTH } from "./grid";
 
 const COLUMNS_PER_BAR = 16;
 const BARS_PER_LINE = 2;
@@ -41,20 +42,18 @@ export function notesToAscii(notes: FrettedNote[], options: AsciiOptions): strin
     const to = Math.min(totalBars, bar + BARS_PER_LINE) * COLUMNS_PER_BAR;
 
     const lines = labels.map((label, string) => {
-      // One cell per column, so a two-digit fret can claim the next cell.
-      const cells: string[] = Array.from({ length: to - from }, () => "-");
+      // Fixed-width cells: `0-`, `12` and `--` all measure the same, so a wide
+      // fret can never steal the position after it or break the column.
+      const cells: string[] = Array.from({ length: to - from }, () => "-".repeat(CELL_WIDTH));
 
       for (const note of placed) {
         if (note.string !== string) continue;
         const at = note.column - from;
         if (at < 0 || at >= cells.length) continue;
-        const text = String(note.fret);
-        cells[at] = text;
-        // A two-character fret eats the following cell, or the grid shifts.
-        if (text.length === 2 && at + 1 < cells.length) cells[at + 1] = "";
+        cells[at] = String(note.fret).padEnd(CELL_WIDTH, "-");
       }
 
-      // Rebuild with bar lines every COLUMNS_PER_BAR columns.
+      // Rebuild with bar lines every COLUMNS_PER_BAR positions.
       let line = `${label}|`;
       cells.forEach((cell, i) => {
         line += cell;

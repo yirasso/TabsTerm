@@ -4,7 +4,8 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TabRender } from "@/components/tab/tab-render";
-import { alignStaves, blankStave, insertAt, validateTab } from "@/lib/tab/edit";
+import { blankStave, insertAt, validateTab } from "@/lib/tab/edit";
+import { normaliseGrid } from "@/lib/tab/grid";
 import { parseTabNotes } from "@/lib/tab/parse-notes";
 import { type Draft, useDrafts } from "@/stores/drafts";
 
@@ -146,7 +147,7 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
       <div className="mt-5 mb-2 flex flex-wrap items-center gap-3 text-[11px]">
         <Action onClick={() => insert(blankStave(draft.tuning, strings))}>+ stave</Action>
         <Action onClick={() => insert("[section]")}>+ section</Action>
-        <Action onClick={() => patch({ content: alignStaves(draft.content) })}>align grid</Action>
+        <Action onClick={() => patch({ content: normaliseGrid(draft.content) })}>align grid</Action>
         <span className="flex-1" />
         <span className="text-term-faint">
           {parsed.notes.length} notes · {parsed.totalColumns} columns

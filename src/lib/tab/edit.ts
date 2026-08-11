@@ -4,6 +4,8 @@
  * square. Pure functions, so the editor stays a thin shell over them.
  */
 
+import { CELL_WIDTH } from "./grid";
+
 /** String labels, high string first, matching how tab lines are stacked. */
 const GUITAR_LABELS = ["e", "B", "G", "D", "A", "E"];
 const BASS_LABELS = ["G", "D", "A", "E"];
@@ -21,51 +23,15 @@ export function staveLabels(tuning: string[] | null, strings = 6): string[] {
   return highFirst.map((note, i) => (i === 0 ? note.toLowerCase() : note.toUpperCase()));
 }
 
-/** An empty stave, ready to be filled in. */
+/** Positions per bar — kept in step with the generator's grid. */
+const POSITIONS_PER_BAR = 8;
+
+/** An empty stave, ready to be filled in, already on the two-character grid. */
 export function blankStave(tuning: string[] | null = null, strings = 6, bars = 2): string {
   const labels = staveLabels(tuning, strings);
   const width = Math.max(1, bars);
-  const bar = "-".repeat(16);
+  const bar = "-".repeat(POSITIONS_PER_BAR * CELL_WIDTH);
   return labels.map((label) => `${label}|${`${bar}|`.repeat(width)}`).join("\n");
-}
-
-/**
- * Pad every line of every stave to that stave's longest line, so columns line
- * up. Padding goes before a trailing bar line, because `--|` and `|--` mean
- * different things to a reader.
- */
-export function alignStaves(content: string): string {
-  const lines = content.split(/\r?\n/);
-  const out = [...lines];
-
-  let start = -1;
-
-  const pad = (from: number, to: number) => {
-    if (to - from < 4) return;
-    const run = lines.slice(from, to);
-    const width = Math.max(...run.map((l) => l.length));
-
-    for (let i = from; i < to; i++) {
-      const line = lines[i] ?? "";
-      const missing = width - line.length;
-      if (missing <= 0) continue;
-      out[i] = line.endsWith("|")
-        ? `${line.slice(0, -1)}${"-".repeat(missing)}|`
-        : line + "-".repeat(missing);
-    }
-  };
-
-  lines.forEach((line, i) => {
-    if (STAVE_LINE.test(line)) {
-      if (start === -1) start = i;
-      return;
-    }
-    if (start !== -1) pad(start, i);
-    start = -1;
-  });
-  if (start !== -1) pad(start, lines.length);
-
-  return out.join("\n");
 }
 
 export type TabIssue = { line: number; message: string };

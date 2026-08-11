@@ -77,6 +77,14 @@ src/
 Slash commands: `/tab`, `/artist`, `/new`, `/listen`, `/random`, `/src`, `/fav`,
 `/auth`, `/man`, `/theme`.
 
+**The grid.** Every notation position is two characters wide, so `0-`, `12` and
+`--` all measure the same and a reader can count positions straight down a
+column. One character per position — the usual convention — breaks above the
+ninth fret: a two-digit fret either pushes everything after it out of line or
+silently swallows the next time position. `normaliseGrid` in
+`src/lib/tab/grid.ts` re-lays hand-written tab onto the grid and is idempotent;
+`scripts/normalise-seeds.ts` runs it over the shipped library.
+
 **Guitar tablature only.** `tabTypeSchema` has a single member: no chord sheets,
 no bass, no ukulele. It stays an enum so one of those can come back as an added
 member rather than a field re-threaded through the schema, the editor and the

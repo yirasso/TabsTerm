@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { alignStaves, blankStave, insertAt, staveLabels, validateTab } from "./edit";
+import { blankStave, insertAt, staveLabels, validateTab } from "./edit";
+import { CELL_WIDTH } from "./grid";
 
 describe("staveLabels", () => {
   it("uses standard labels when no tuning is declared", () => {
@@ -31,52 +32,10 @@ describe("blankStave", () => {
   });
 });
 
-describe("alignStaves", () => {
-  it("pads short lines to the longest in the same stave", () => {
-    const ragged = `e|--0--|
-B|--1|
-G|--0--|
-D|--2--|
-A|--3--|
-E|-----|`;
-    const lines = alignStaves(ragged).split("\n");
-    expect(new Set(lines.map((l) => l.length)).size).toBe(1);
-  });
-
-  it("pads before a trailing bar, not after it", () => {
-    const ragged = `e|--0--|
-B|--1|
-G|--0--|
-D|--2--|
-A|--3--|
-E|-----|`;
-    expect(alignStaves(ragged).split("\n")[1]).toBe("B|--1--|");
-  });
-
-  it("leaves prose and labels untouched", () => {
-    const content = "[Intro]\nplay softly\n";
-    expect(alignStaves(content)).toBe(content);
-  });
-
-  it("aligns each stave independently", () => {
-    const two = `e|--0|
-B|--1--|
-G|-----|
-D|-----|
-A|-----|
-E|-----|
-
-e|--0--------|
-B|--1|
-G|-----------|
-D|-----------|
-A|-----------|
-E|-----------|`;
-    const [first = "", second = ""] = alignStaves(two).split("\n\n");
-    expect(new Set(first.split("\n").map((l) => l.length)).size).toBe(1);
-    expect(new Set(second.split("\n").map((l) => l.length)).size).toBe(1);
-    // The short stave must not have been stretched to the long one's width.
-    expect(first.split("\n")[0]?.length).toBeLessThan(second.split("\n")[0]?.length ?? 0);
+describe("blankStave, on the grid", () => {
+  it("emits whole cells, so a new stave is already square", () => {
+    const body = (blankStave().split("\n")[0] ?? "").slice(2).replace(/\|/g, "");
+    expect(body.length % CELL_WIDTH).toBe(0);
   });
 });
 

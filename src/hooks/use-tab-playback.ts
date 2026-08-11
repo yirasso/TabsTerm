@@ -4,8 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createGuitar, type Guitar } from "@/lib/tab/guitar";
 import { type ParsedTab, parseTabNotes } from "@/lib/tab/parse-notes";
 
-/** Columns per minute at 1× — a step is a sixteenth note at the shown bpm. */
-const COLUMNS_PER_BEAT = 4;
+/**
+ * Characters per beat. Positions are two characters wide, so this is four
+ * positions — a sixteenth note each at the shown bpm.
+ */
+const COLUMNS_PER_BEAT = 8;
 /** Schedule this far ahead of the clock, so audio never starves. */
 const LOOKAHEAD_SECONDS = 0.4;
 const TICK_MS = 50;

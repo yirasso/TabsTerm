@@ -33,5 +33,8 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // `scripts` and `tools` are run directly by Node, which wants the `.ts`
+  // extension in import specifiers that tsc rejects. They are maintenance
+  // utilities, not part of the app, so they stay out of the app's typecheck.
+  "exclude": ["node_modules", "scripts", "tools"]
 }

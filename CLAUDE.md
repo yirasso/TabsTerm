@@ -20,6 +20,13 @@ npm run check     # typecheck + biome + vitest
   A new source is a new file in `providers/` plus an entry in `TAB_PROVIDERS`.
 - **ASCII tablature is a fixed-width grid.** `.tab-content` must keep `white-space: pre`
   and a monospace font with ligatures off. If it reflows, the tab is wrong.
+- **Every notation position is two characters wide** (`CELL_WIDTH` in
+  `src/lib/tab/grid.ts`): `0-`, `12` and `--` all measure the same. One character per
+  position breaks the moment anyone plays above the ninth fret, because a two-digit fret
+  either pushes the column out of line or silently eats the next time position.
+  `normaliseGrid` re-lays hand-written tab onto it and is idempotent. If you change
+  `CELL_WIDTH`, `COLUMNS_PER_BEAT` in `use-tab-playback.ts` must move with it or every
+  tab changes tempo.
 - **Design tokens are the `--tt-*` variables in `src/app/globals.css`** (one block per
   theme: paper/crt/amber/mono, switched by `data-theme` via next-themes). The
   `@theme inline` block maps them to `term-*` utilities; components reference those
