@@ -1,5 +1,6 @@
+// A provider answers over the wire, never from the browser. See registry.ts.
+import "server-only";
 import { seedTabs } from "@/data/seed-tabs";
-import { slugify } from "@/lib/utils";
 import {
   deriveCapability,
   type SongSummary,
@@ -7,7 +8,8 @@ import {
   type Tab,
   type TabProvider,
   tabSchema,
-} from "../types";
+} from "@/lib/tabs/contract";
+import { slugify } from "@/lib/utils";
 
 const tabs: Tab[] = seedTabs.map((t) =>
   tabSchema.parse({

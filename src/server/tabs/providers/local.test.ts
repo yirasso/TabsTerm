@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveCapability } from "../types";
+import { deriveCapability } from "@/lib/tabs/contract";
 import { localProvider } from "./local";
 
 const STAVE = `e|--0--|

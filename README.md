@@ -126,7 +126,7 @@ mismatch on hydration, and rotates daily.
 
 ### Tab sources
 
-Sources implement one interface (`TabProvider` in `src/server/tabs/types.ts`) and are
+Sources implement one interface (`TabProvider` in `src/lib/tabs/contract.ts`) and are
 enabled through the `TAB_PROVIDERS` env var. `searchAllProviders` queries them in
 parallel with `Promise.allSettled`: a source that is down lands in `degraded` and the
 UI says so, instead of the whole search failing.

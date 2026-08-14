@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { CommandLine } from "@/components/chrome/command-line";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
 import { useTabPlayback } from "@/hooks/use-tab-playback";
-import type { Tab } from "@/server/tabs/types";
+import type { Tab } from "@/lib/tabs/contract";
 import { favKey, useSession } from "@/stores/session";
 import { anyModalOpen } from "@/stores/ui";
 import { CapabilityBadge } from "./capability-badge";

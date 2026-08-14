@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { type SearchResponse, searchResponseSchema } from "@/server/tabs/types";
+import { type SearchResponse, searchResponseSchema } from "@/lib/tabs/contract";
 
 async function fetchSearch(query: string, signal: AbortSignal): Promise<SearchResponse> {
   const params = new URLSearchParams({ q: query });

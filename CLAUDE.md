@@ -16,8 +16,13 @@ npm run check     # typecheck + biome + vitest
   `biome.json` is parsed strictly — do not put `//` comments in it, it silently falls
   back to defaults.
 - **Tab data never lives in components.** Sources implement `TabProvider`
-  (`src/server/tabs/types.ts`) and are registered in `src/server/tabs/registry.ts`.
+  (`src/lib/tabs/contract.ts`) and are registered in `src/server/tabs/registry.ts`.
   A new source is a new file in `providers/` plus an entry in `TAB_PROVIDERS`.
+- **`src/lib/tabs/contract.ts` must stay safe to run in a browser.** It is the
+  shared contract, imported as *values* by client code (response parsing, the drafts
+  store, the badge labels). The registry and the providers are marked `server-only`
+  and import it; never the reverse. Putting a database client, a secret, or a node
+  builtin behind that import is what the `server-only` marks exist to catch.
 - **ASCII tablature is a fixed-width grid.** `.tab-content` must keep `white-space: pre`
   and a monospace font with ligatures off. If it reflows, the tab is wrong.
 - **Every notation position is two characters wide** (`CELL_WIDTH` in
@@ -48,7 +53,7 @@ npm run check     # typecheck + biome + vitest
   `provider` query param is a client-supplied filter; treating it as a way to enable a
   source would let anyone switch on what the operator turned off. There is an e2e test
   pinning this.
-- **Capability is decided in one place**, `deriveCapability` in `src/server/tabs/types.ts`.
+- **Capability is decided in one place**, `deriveCapability` in `src/lib/tabs/contract.ts`.
   It asks the parser whether it found notes, so `full` cannot promise sound the player
   cannot deliver.
 - **Guitar tablature only.** No chord sheets, bass or ukulele. `tabTypeSchema` keeps a

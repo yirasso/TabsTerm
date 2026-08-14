@@ -2,8 +2,8 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { SongSummary, Tab, TabType } from "@/server/tabs/types";
-import { deriveCapability } from "@/server/tabs/types";
+import type { SongSummary, Tab, TabType } from "@/lib/tabs/contract";
+import { deriveCapability } from "@/lib/tabs/contract";
 
 /**
  * Tabs written in the browser, before there is a database to put them in.

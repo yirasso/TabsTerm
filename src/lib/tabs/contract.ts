@@ -1,3 +1,21 @@
+/**
+ * The tab contract: the shapes and rules both sides of the wire agree on.
+ *
+ * This lives in `lib/` rather than `server/` because the client genuinely needs
+ * it as *values*, not just types — `use-song-search` parses responses through
+ * `searchResponseSchema`, the drafts store calls `deriveCapability`, and the
+ * badge reads the label maps. It used to sit in `src/server/tabs/types.ts`,
+ * which meant four client modules were importing from a server folder and
+ * getting away with it only because nothing in that file reached for the
+ * server. The day it did — a database client, a secret, `node:fs` — the build
+ * would have broken somewhere that gave no hint why.
+ *
+ * So the rule is the file's location, not a comment: everything here must be
+ * safe to run in a browser. It imports zod and one pure parser and nothing else.
+ * Server-side machinery (the provider registry, the providers themselves) is
+ * marked `server-only` and imports this, never the other way around.
+ */
+
 import { z } from "zod";
 import { isPlayable } from "@/lib/tab/parse-notes";
 
@@ -61,14 +79,18 @@ export type Tab = z.infer<typeof tabSchema>;
 export const searchResponseSchema = z.object({
   query: z.string(),
   results: z.array(songSummarySchema),
-  /** Providers that failed, so the UI can say "songsterr is down" instead of "no results". */
+  /** Providers that failed, so the UI can say which source is down rather than "no results". */
   degraded: z.array(z.object({ provider: z.string(), reason: z.string() })),
 });
 export type SearchResponse = z.infer<typeof searchResponseSchema>;
 
 /**
- * A tab source. Add a file under `providers/`, register it, and both the API
- * and the UI pick it up without further changes.
+ * A tab source. Add a file under `server/tabs/providers/`, register it, and both
+ * the API and the UI pick it up without further changes.
+ *
+ * The interface is declared here rather than beside the registry because it is
+ * part of the contract: it is the shape of what comes back over the wire.
+ * Implementations are server-side; this declaration is not.
  */
 export interface TabProvider {
   readonly id: string;
@@ -79,13 +101,13 @@ export interface TabProvider {
   getTab(id: string, signal?: AbortSignal): Promise<Tab | null>;
   /**
    * Optional. Only sources that can enumerate their own catalog can offer a
-   * random pick — a search-only upstream like Songsterr simply omits this, and
-   * `/random` skips it rather than guessing an id.
+   * random pick — a search-only upstream simply omits this, and `/random` skips
+   * it rather than guessing an id.
    */
   random?(signal?: AbortSignal): Promise<Tab | null>;
 }
 
-/** Stable cross-provider key: `songsterr:1234`. Used in URLs. */
+/** Stable cross-provider key: `local:greensleeves`. Used in URLs. */
 export function songKey(song: Pick<SongSummary, "provider" | "id">) {
   return `${song.provider}:${song.id}`;
 }

@@ -1,4 +1,4 @@
-import { CAPABILITY_DETAIL, CAPABILITY_LABEL, type TabCapability } from "@/server/tabs/types";
+﻿import { CAPABILITY_DETAIL, CAPABILITY_LABEL, type TabCapability } from "@/lib/tabs/contract";
 
 const TONE: Record<TabCapability, string> = {
   full: "text-term-accent",
@@ -7,7 +7,7 @@ const TONE: Record<TabCapability, string> = {
 };
 
 /**
- * Tells the reader what a result actually gives them before they open it —
+ * Tells the reader what a result actually gives them before they open it â€”
  * playable tab, silent tab, or a link off-site.
  */
 export function CapabilityBadge({

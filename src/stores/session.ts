@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { SongSummary } from "@/server/tabs/types";
+import type { SongSummary } from "@/lib/tabs/contract";
 
 /** Mock account, per the design: client-side only, nothing leaves the browser. */
 export type SessionUser = { email: string; handle: string };

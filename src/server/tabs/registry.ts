@@ -1,6 +1,10 @@
+// Poisons this module for client bundles: importing it from a component now
+// fails at build time with a message that names the cause, instead of dragging
+// `env` — and one day a database client — into the browser.
+import "server-only";
 import { env } from "@/lib/env";
+import type { SearchResponse, SongSummary, Tab, TabProvider } from "@/lib/tabs/contract";
 import { localProvider } from "./providers/local";
-import type { SearchResponse, SongSummary, Tab, TabProvider } from "./types";
 
 const ALL: Record<string, TabProvider> = {
   [localProvider.id]: localProvider,
