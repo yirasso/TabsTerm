@@ -120,7 +120,10 @@ test("the editor asks for a title, an artist, a tuning and a capo — and no mor
   // Difficulty is gone: it was a judgement nobody was asking for about a tab
   // only its own author reads.
   await expect(page.getByText("level", { exact: true })).toHaveCount(0);
-  // And the artist placeholder names the field rather than proposing a value.
+
+  // Both name their field rather than proposing a value. "Greensleeves" and
+  // "Traditional" read as data someone might leave in by accident.
+  await expect(page.getByLabel("title")).toHaveAttribute("placeholder", "title");
   await expect(page.getByLabel("artist")).toHaveAttribute("placeholder", "artist");
 });
 

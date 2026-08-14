@@ -105,20 +105,19 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
         {/* The title and artist name the thing being made, so they sit above
             the settings rather than beside them at the same weight — six
             identical fields is a form, not a piece of work with a name. */}
+        {/* Both placeholders name their field rather than proposing a value.
+            Neither input carries a separate label: the word sitting in the empty
+            field is the label, and it leaves as soon as there is a real title to
+            read in its place. */}
         <div className="mb-5 border-term-fg border-b-2 pb-3">
-          <label htmlFor="tab-title" className="mb-0.5 block text-[11px] text-term-faint">
-            title
-          </label>
           <input
             id="tab-title"
+            aria-label="title"
             value={draft.title}
             onChange={(e) => patch({ title: e.target.value })}
-            placeholder="Greensleeves"
+            placeholder="title"
             className="tt-display w-full border-0 bg-transparent p-0 caret-term-accent outline-none placeholder:text-term-faint"
           />
-          {/* The placeholder names the field rather than suggesting a value —
-              this input carries no visible label, so with none at all the line
-              would read as blank space. */}
           <input
             id="tab-artist"
             aria-label="artist"
