@@ -17,9 +17,12 @@ type Phase = "idle" | "recording" | "working" | "failed";
  */
 export function TranscribeControls({
   tuning,
+  className = "",
   onResult,
 }: {
   tuning: string[] | null;
+  /** How much of the settings row this takes. */
+  className?: string;
   onResult: (result: Transcription, name: string | null) => void;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -75,9 +78,11 @@ export function TranscribeControls({
   const busy = phase === "working";
 
   return (
-    <div className="flex flex-col gap-1.5 border-term-line border-b pb-1.5">
-      <div className="flex items-center gap-[9px]">
-        <span className="w-16 flex-none text-[11px] text-term-faint">audio</span>
+    // The rule sits under the controls, not under the status line, so it lines
+    // up with the rule under tuning and capo beside it.
+    <div className={`flex flex-col gap-1.5 ${className}`}>
+      <div className="flex items-center gap-[9px] border-term-line border-b pb-1.5">
+        <span className="flex-none text-[11px] text-term-faint">audio</span>
         <div className="flex flex-wrap items-center gap-2 text-[11px]">
           {phase === "recording" ? (
             <button

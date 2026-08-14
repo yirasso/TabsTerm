@@ -99,6 +99,12 @@ being inserted into a line, a two-digit fret cannot push the strings below it ou
 of column — the alignment problem is gone by construction rather than corrected
 after the fact. There is no raw text box.
 
+Which is why every block has to be reachable from the grid itself: a section name
+is an input, and each block — section, prose or stave — carries its own `remove`.
+`parseTabNotes` gives every block a `firstLine` and `lineCount` for exactly this,
+so an edit splices the lines it is already looking at instead of searching the
+content for text that may appear twice.
+
 **Guitar tablature only.** `tabTypeSchema` has a single member: no chord sheets,
 no bass, no ukulele. It stays an enum so one of those can come back as an added
 member rather than a field re-threaded through the schema, the editor and the

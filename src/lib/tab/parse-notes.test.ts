@@ -78,7 +78,20 @@ E|------|`);
   it("keeps labels, prose and staves as separate ordered blocks", () => {
     const { blocks } = parseTabNotes(`[Intro]\nplay it softly\n${STAVE}`);
     expect(blocks.map((b) => b.kind)).toEqual(["label", "text", "stave"]);
-    expect(blocks[0]).toMatchObject({ kind: "label", text: "intro" });
+    // Verbatim: the editor puts this text in an input, so folding its case
+    // would eat an uppercase letter as it was typed.
+    expect(blocks[0]).toMatchObject({ kind: "label", text: "Intro" });
+  });
+
+  it("says where every block starts and how many lines it holds", () => {
+    const { blocks } = parseTabNotes(`[Intro]\n\nplay it softly\n${STAVE}`);
+    // Removing a block splices these lines out, so prose has to own the blank
+    // line above it — otherwise deleting the words leaves the gap behind.
+    expect(blocks.map((b) => [b.firstLine, b.lineCount])).toEqual([
+      [0, 1],
+      [1, 2],
+      [3, 6],
+    ]);
   });
 
   it("gives every block a distinct id, even with repeated text", () => {

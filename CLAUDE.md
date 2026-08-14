@@ -76,6 +76,12 @@ npm run check     # typecheck + biome + vitest
   the line sideways — so do not add a raw text box back without deciding what happens
   when the two disagree. There is no `align grid` button: writing a cell rewrites the
   whole stave at a fixed width, so touching a ragged stave anywhere squares it.
+- **With no text box, anything not reachable from the grid is unreachable, full stop.**
+  A section name is an input and every block carries a `remove`; each edit splices by
+  `block.firstLine`/`lineCount` from `parseTabNotes`, never by searching the content —
+  two sections can share a name. For the same reason the parser keeps a label's text
+  verbatim: it used to lowercase it, which silently ate an uppercase letter as it was
+  typed. The reader uppercases in CSS, so nothing lost that.
 - **Transcribing is a way of starting a tab, not a place to go.** It lives as a control
   inside the `/new` editor, so what comes out lands in a draft that already has the
   title, tuning and capo fields it needs. There is no `/listen` route; a page of its own

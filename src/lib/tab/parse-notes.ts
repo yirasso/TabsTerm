@@ -30,7 +30,17 @@ export type TabNote = {
  * renderer: the order is fixed by immutable content, and two blocks can hold
  * identical text.
  */
-export type TabBlock = { id: string } & (
+export type TabBlock = {
+  id: string;
+  /**
+   * Where this block sits in the source text. An editor rewrites or removes a
+   * block by splicing these lines, so it never has to search the content for
+   * something it is already looking at — and two identical sections stay
+   * distinguishable.
+   */
+  firstLine: number;
+  lineCount: number;
+} & (
   | { kind: "label"; text: string }
   | { kind: "text"; text: string }
   | {
@@ -41,11 +51,6 @@ export type TabBlock = { id: string } & (
       width: number;
       /** Add this to a local column to get a global one. */
       columnOffset: number;
-      /**
-       * Index of this stave's first line in the source text, so an editor can
-       * write the stave back where it came from without re-finding it.
-       */
-      firstLine: number;
     }
 );
 
@@ -150,12 +155,23 @@ export function parseTabNotes(
   let staveRun: string[] = [];
   let staveStart = 0;
   let textRun: string[] = [];
+  let textStart = 0;
 
   const nextId = (kind: string) => `${kind}-${blocks.length}`;
 
   const flushText = () => {
     const text = textRun.join("\n").replace(/^\n+/, "").trimEnd();
-    if (text) blocks.push({ id: nextId("text"), kind: "text", text });
+    // The block's text is trimmed but its line range is not: removing it has to
+    // take the blank lines with it, or deleting prose leaves the gap behind.
+    if (text) {
+      blocks.push({
+        id: nextId("text"),
+        kind: "text",
+        text,
+        firstLine: textStart,
+        lineCount: textRun.length,
+      });
+    }
     textRun = [];
   };
 
@@ -174,10 +190,12 @@ export function parseTabNotes(
         width,
         columnOffset: offset,
         firstLine: staveStart,
+        lineCount: staveRun.length,
       });
       for (const note of local) notes.push({ ...note, column: note.column + offset });
       offset += width;
     } else if (staveRun.length > 0) {
+      if (textRun.length === 0) textStart = staveStart;
       textRun.push(...staveRun);
     }
     staveRun = [];
@@ -198,8 +216,18 @@ export function parseTabNotes(
     const label = LABEL_LINE.exec(line);
     if (label) {
       flushText();
-      blocks.push({ id: nextId("label"), kind: "label", text: (label[1] ?? "").toLowerCase() });
+      blocks.push({
+        id: nextId("label"),
+        kind: "label",
+        // Kept as written. The reader uppercases in CSS, and since the editor
+        // shows this text in an input, folding the case here would delete an
+        // uppercase letter the moment someone typed it.
+        text: label[1] ?? "",
+        firstLine: index,
+        lineCount: 1,
+      });
     } else {
+      if (textRun.length === 0) textStart = index;
       textRun.push(line);
     }
   });

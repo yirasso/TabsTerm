@@ -18,6 +18,23 @@ D|--------------------------------|
 A|--------------------------------|
 E|--------------------------------|`;
 
+/** Two sections, so removing one has to leave the other standing. */
+const TWO_SECTIONS = `[intro]
+e|-----------
+B|-----------
+G|-----------
+D|-----------
+A|-----------
+E|-----------
+
+[verse]
+e|-----------
+B|-----------
+G|-----------
+D|-----------
+A|-----------
+E|-----------`;
+
 /** A cell in the grid. Exact, or "position 1" also matches "position 10". */
 const cell = (string: number, position: number, fret?: number) => ({
   name: `string ${string}, position ${position}${fret === undefined ? "" : `, fret ${fret}`}`,
@@ -233,6 +250,34 @@ test("arrows move between positions and backspace clears one", async ({ page }) 
 
   await page.keyboard.press("Backspace");
   await expect(page.getByRole("button", cell(2, 2, 3))).toHaveCount(0);
+});
+
+test("a section can be renamed, which needs no text box", async ({ page }) => {
+  await openWith(page, TWO_SECTIONS);
+
+  // With the grid taking every click there was nowhere to put a cursor, so a
+  // mistyped section name was unreachable for the life of the tab.
+  await page.getByLabel("section name").first().fill("Chorus");
+
+  await expect.poll(() => content(page)).toContain("[Chorus]");
+  await expect.poll(() => content(page)).not.toContain("[intro]");
+});
+
+test("a section and a stave can each be removed on their own", async ({ page }) => {
+  await openWith(page, TWO_SECTIONS);
+
+  const staves = () => content(page).then((t) => staveLines(t).length);
+  expect(await staves()).toBe(12);
+
+  // Removing the label leaves its stave; they are separate blocks and the
+  // remove control belongs to whichever one you clicked.
+  await page.getByRole("button", { name: "remove section" }).first().click();
+  await expect.poll(() => content(page)).not.toContain("[intro]");
+  await expect.poll(staves).toBe(12);
+
+  await page.getByRole("button", { name: "remove stave" }).first().click();
+  await expect.poll(staves).toBe(6);
+  await expect.poll(() => content(page)).toContain("[verse]");
 });
 
 test("the editor plays what is being written, and walks a cursor over it", async ({ page }) => {

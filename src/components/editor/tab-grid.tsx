@@ -44,8 +44,9 @@ const same = (a: Spot | null, b: Spot) =>
  * push the rest of the line sideways, so the columns stay in a column and the
  * alignment problem stops existing instead of being cleaned up afterwards.
  *
- * The text area is still there for pasting and for bulk edits. Both write the
- * same string, so neither is the real one.
+ * It is the only way in — there is no text box behind it — so everything a tab
+ * is made of has to be reachable from here: frets, section names, and removing
+ * a block that should not be there.
  */
 export function TabGrid({
   content,
@@ -127,20 +128,57 @@ export function TabGrid({
     move({ ...at, line, position });
   };
 
+  /** Cut a block out, taking its own lines and nothing else. */
+  const removeBlock = (block: TabBlock) =>
+    onChange(replaceLines(content, block.firstLine, block.lineCount, []));
+
+  const Remove = ({ block, what }: { block: TabBlock; what: string }) => (
+    <button
+      type="button"
+      onClick={() => removeBlock(block)}
+      aria-label={`remove ${what}`}
+      className="flex-none text-[11px] text-term-faint leading-none hover:text-term-accent"
+    >
+      remove
+    </button>
+  );
+
   return (
     <div className="tab-content text-[15px] leading-[1.85]">
       {blocks.map((block) => {
         if (block.kind === "label") {
           return (
-            <div key={block.id} className="mt-4 mb-1 text-term-accent first:mt-0">
-              [{block.text}]
+            <div key={block.id} className="mt-4 mb-1 flex items-baseline gap-2 first:mt-0">
+              {/* Editable, because with no text box a mistyped section name was
+                  unreachable: the grid took every click and there was nothing
+                  else to put a cursor in. Bounded so the closing bracket stays
+                  next to the word rather than at the far side of the page. */}
+              <span className="text-term-accent">[</span>
+              <input
+                aria-label="section name"
+                value={block.text}
+                onChange={(e) =>
+                  onChange(
+                    replaceLines(content, block.firstLine, block.lineCount, [
+                      `[${e.target.value}]`,
+                    ]),
+                  )
+                }
+                className="-mx-1 min-w-0 max-w-[240px] flex-1 border-0 bg-transparent px-1 text-term-accent caret-term-accent outline-none"
+              />
+              <span className="text-term-accent">]</span>
+              {/* Every `remove` sits on the same right edge, whatever kind of
+                  block it belongs to. */}
+              <span className="flex-1" />
+              <Remove block={block} what="section" />
             </div>
           );
         }
         if (block.kind === "text") {
           return (
-            <div key={block.id} className="mb-1 whitespace-pre-wrap text-term-dim">
-              {block.text}
+            <div key={block.id} className="mb-1 flex items-baseline gap-3">
+              <span className="min-w-0 flex-1 whitespace-pre-wrap text-term-dim">{block.text}</span>
+              <Remove block={block} what="text" />
             </div>
           );
         }
@@ -152,59 +190,65 @@ export function TabGrid({
         const holdsCursor = local >= 0 && local < block.width;
 
         return (
+          // `items-start`: the control belongs to the whole stave, so it sits
+          // level with its first string rather than floating beside the middle
+          // one.
           <div
             key={block.id}
             ref={holdsCursor ? activeRef : undefined}
-            className="mb-4 overflow-x-auto"
+            className="mb-4 flex items-start gap-3"
           >
-            {grid.cells.map((row, line) => (
-              // Stave lines have no identity beyond their order in the stave,
-              // and that order is fixed.
-              // biome-ignore lint/suspicious/noArrayIndexKey: the string number is the identity
-              <div key={line} className="flex whitespace-pre">
-                <span className="text-term-faint">{grid.labels[line]}</span>
-                {row.map((cell, position) => {
-                  const at: Spot = { block: block.id, line, position };
-                  const starts = charOffset((grid.labels[line] ?? "").length, bars, position);
-                  const active = holdsCursor && local >= starts && local < starts + CELL_WIDTH;
+            <div className="min-w-0 flex-1 overflow-x-auto">
+              {grid.cells.map((row, line) => (
+                // Stave lines have no identity beyond their order in the stave,
+                // and that order is fixed.
+                // biome-ignore lint/suspicious/noArrayIndexKey: the string number is the identity
+                <div key={line} className="flex whitespace-pre">
+                  <span className="text-term-faint">{grid.labels[line]}</span>
+                  {row.map((cell, position) => {
+                    const at: Spot = { block: block.id, line, position };
+                    const starts = charOffset((grid.labels[line] ?? "").length, bars, position);
+                    const active = holdsCursor && local >= starts && local < starts + CELL_WIDTH;
 
-                  return (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: position is the identity
-                    <span key={position} className="flex">
-                      {bars.has(position) && <span className="text-term-faint">|</span>}
-                      <button
-                        type="button"
-                        ref={same(spot, at) ? caretRef : undefined}
-                        // One entry point per stave until something is selected,
-                        // so Tab does not walk through every position on the way
-                        // past.
-                        tabIndex={
-                          spot ? (same(spot, at) ? 0 : -1) : line === 0 && position === 0 ? 0 : -1
-                        }
-                        data-testid={active ? "tab-cursor" : undefined}
-                        aria-label={`string ${line + 1}, position ${position + 1}${
-                          cellFret(cell) === null ? "" : `, fret ${cellFret(cell)}`
-                        }`}
-                        onClick={() => move(at)}
-                        onKeyDown={(e) => onKey(e, block, at, width)}
-                        className={`whitespace-pre border-0 bg-transparent p-0 font-[inherit] text-[inherit] leading-[inherit] outline-none ${
-                          same(spot, at)
-                            ? "tt-caret"
-                            : active
-                              ? "text-term-accent"
-                              : cellFret(cell) === null
-                                ? "text-term-faint hover:text-term-accent"
-                                : "text-term-fg hover:text-term-accent"
-                        }`}
-                      >
-                        {cell}
-                      </button>
-                    </span>
-                  );
-                })}
-                {bars.has(width) && <span className="text-term-faint">|</span>}
-              </div>
-            ))}
+                    return (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: position is the identity
+                      <span key={position} className="flex">
+                        {bars.has(position) && <span className="text-term-faint">|</span>}
+                        <button
+                          type="button"
+                          ref={same(spot, at) ? caretRef : undefined}
+                          // One entry point per stave until something is selected,
+                          // so Tab does not walk through every position on the way
+                          // past.
+                          tabIndex={
+                            spot ? (same(spot, at) ? 0 : -1) : line === 0 && position === 0 ? 0 : -1
+                          }
+                          data-testid={active ? "tab-cursor" : undefined}
+                          aria-label={`string ${line + 1}, position ${position + 1}${
+                            cellFret(cell) === null ? "" : `, fret ${cellFret(cell)}`
+                          }`}
+                          onClick={() => move(at)}
+                          onKeyDown={(e) => onKey(e, block, at, width)}
+                          className={`whitespace-pre border-0 bg-transparent p-0 font-[inherit] text-[inherit] leading-[inherit] outline-none ${
+                            same(spot, at)
+                              ? "tt-caret"
+                              : active
+                                ? "text-term-accent"
+                                : cellFret(cell) === null
+                                  ? "text-term-faint hover:text-term-accent"
+                                  : "text-term-fg hover:text-term-accent"
+                          }`}
+                        >
+                          {cell}
+                        </button>
+                      </span>
+                    );
+                  })}
+                  {bars.has(width) && <span className="text-term-faint">|</span>}
+                </div>
+              ))}
+            </div>
+            <Remove block={block} what="stave" />
           </div>
         );
       })}

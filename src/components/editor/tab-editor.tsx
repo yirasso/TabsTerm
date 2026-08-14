@@ -9,7 +9,6 @@ import { TranscribeControls } from "@/components/editor/transcribe-controls";
 import { PlaybackBar } from "@/components/tab/playback-bar";
 import { useTabPlayback } from "@/hooks/use-tab-playback";
 import { blankStave, insertAt, validateTab } from "@/lib/tab/edit";
-import { normaliseGrid } from "@/lib/tab/grid";
 import { type Draft, useDrafts } from "@/stores/drafts";
 
 const TUNINGS: Record<string, string[]> = {
@@ -133,8 +132,12 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
           />
         </div>
 
-        <div className="grid gap-x-6 gap-y-3 border-term-line border-b pb-5 sm:grid-cols-2">
-          <Field label="tuning" htmlFor="tab-tuning">
+        {/* One row: three short settings that read as a single sentence about
+            how the tab is played. Each sizes to what it holds rather than to a
+            column, and they wrap only when the window is too narrow to hold
+            them. */}
+        <div className="flex flex-wrap items-baseline gap-x-8 gap-y-3 border-term-line border-b pb-5">
+          <Field label="tuning" htmlFor="tab-tuning" className="w-[220px] flex-none">
             <select
               id="tab-tuning"
               value={tuningName(draft.tuning)}
@@ -148,7 +151,7 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
               ))}
             </select>
           </Field>
-          <Field label="capo" htmlFor="tab-capo">
+          <Field label="capo" htmlFor="tab-capo" className="w-[130px] flex-none">
             <input
               id="tab-capo"
               type="number"
@@ -160,6 +163,7 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
             />
           </Field>
           <TranscribeControls
+            className="min-w-[260px] flex-1"
             tuning={draft.tuning}
             onResult={(result, name) => {
               // Append rather than replace: a second take belongs after the
@@ -267,15 +271,18 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
 function Field({
   label,
   htmlFor,
+  className = "",
   children,
 }: {
   label: string;
   htmlFor: string;
+  /** How much of the settings row this field takes. */
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-baseline gap-[9px] border-term-line border-b pb-1.5">
-      <label htmlFor={htmlFor} className="w-16 flex-none text-[11px] text-term-faint">
+    <div className={`flex items-baseline gap-[9px] border-term-line border-b pb-1.5 ${className}`}>
+      <label htmlFor={htmlFor} className="flex-none text-[11px] text-term-faint">
         {label}
       </label>
       {children}
