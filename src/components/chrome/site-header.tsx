@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession } from "@/stores/session";
 import { useUi } from "@/stores/ui";
@@ -9,7 +10,7 @@ import { Palette } from "./palette";
 import { useThemeCycle } from "./use-theme-cycle";
 
 export function SiteHeader() {
-  const { aboutOpen, authOpen, paletteOpen, openAbout, openAuth, togglePalette } = useUi();
+  const { aboutOpen, authOpen, paletteOpen, openAuth, togglePalette } = useUi();
   const user = useSession((s) => s.user);
   const { theme, cycle } = useThemeCycle();
 
@@ -32,13 +33,16 @@ export function SiteHeader() {
   return (
     <>
       <header className="sticky top-0 z-[6] flex items-baseline gap-4 border-b border-term-line bg-term-bg px-[22px] py-3.5">
-        <button
-          type="button"
-          onClick={openAbout}
-          className="text-[12px] font-bold uppercase tracking-[0.16em]"
+        {/* A real link, not a button that pushes: the wordmark is the way home,
+            and middle-click, cmd-click and "open in new tab" all have to work.
+            `/` with no query is deliberate — it clears `q` and `view`, so this
+            always lands on the empty prompt rather than the last search. */}
+        <Link
+          href="/"
+          className="text-[12px] text-term-fg font-bold uppercase tracking-[0.16em] hover:text-term-accent"
         >
           tabsterm
-        </button>
+        </Link>
         <span className="text-[11px] text-term-faint">v0.4.1</span>
         <span className="flex-1" />
         <div className="flex items-center gap-3.5 text-[11px] text-term-dim">

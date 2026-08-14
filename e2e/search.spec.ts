@@ -221,6 +221,23 @@ test("the header carries no source chip", async ({ page }) => {
   await expect(page.getByRole("button", { name: /^src:/ })).toHaveCount(0);
 });
 
+test("the wordmark goes home, and drops whatever was being searched", async ({ page }) => {
+  await page.goto("/?q=greensleeves&view=results");
+  await expect(page.getByText(/results ·/)).toBeVisible();
+
+  await page.getByRole("link", { name: "tabsterm" }).click();
+
+  // Bare `/`, so the prompt comes back empty rather than holding the last query.
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByLabel("search for a song")).toHaveValue("");
+});
+
+test("the wordmark goes home from a tab, too", async ({ page }) => {
+  await page.goto("/song/local/greensleeves");
+  await page.getByRole("link", { name: "tabsterm" }).click();
+  await expect(page.getByLabel("search for a song")).toBeVisible();
+});
+
 test("the theme button cycles themes", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /theme: paper/ }).click();
