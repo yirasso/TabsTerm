@@ -82,17 +82,26 @@ npm run check     # typecheck + biome + vitest
 - **`TabProvider.random` is optional by design.** Only sources that can enumerate
   their catalog implement it; `randomTab` skips the rest instead of guessing ids.
 - **E2E runs with `TAB_PROVIDERS=local`** (set in `playwright.config.ts`) so it is
-  deterministic and offline. Don't write e2e assertions against Songsterr results.
+  deterministic and offline. Songsterr is gone; `local` is the only provider today.
 
-## Content sources — the rule that decides everything
+## Content — the rule that decides everything
 
-**Never copy tablature from another site, by any method.** A tab embodies someone
-else's composition; scraping it, or transcribing it by ear and publishing it, are the
-same thing legally. Content comes from three places only: users who write it under
-their own account, public-domain scores with per-row licence proof, and metadata-only
-links to sources that host their own (Songsterr). Audio analysis, when it lands, must
-run in the browser on audio the user supplies — the server never fetches or stores
-recordings. Reasoning and precedents in [docs/PLAN.md](docs/PLAN.md).
+**Nothing a user makes is ever published, and adding publishing reopens the whole
+copyright question.** Every tab belongs to the account that made it and is visible to
+nobody else. That is what lets someone transcribe a recording they own: it is personal
+use, not distribution. The moment one user can show another a tab — sharing, a public
+link, a feed, an export someone else receives — publishing a transcription of a
+protected work becomes the same thing as copying it, and that is a deliberate product
+decision, never a convenience slipped into a PR.
+
+Two things this does not relax. **Never scrape another site's tablature**, private or
+not; copying someone's database is wrong on its own terms. And **audio never leaves the
+browser** — analysis runs client-side on audio the user supplies, only the resulting
+tab is stored, and the server never fetches or holds a recording (DMCA §1201 makes a
+server-side YouTube-to-MP3 path a non-starter).
+
+The five shipped tabs in `src/data/seed-tabs.ts` are product content, public domain with
+provenance — not user tabs.
 
 ## Current state
 
