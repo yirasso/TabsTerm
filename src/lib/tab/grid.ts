@@ -14,6 +14,13 @@
 
 export const CELL_WIDTH = 2;
 
+/**
+ * Notation positions in a bar — four beats of sixteenths. The generator lays
+ * bar lines on it and the player counts bars by it, so the two have to read it
+ * from the same place or the bar counter drifts from the tab it is counting.
+ */
+export const COLUMNS_PER_BAR = 16;
+
 const STAVE_LINE = /^\s*[A-Ga-g][#b]?\s*\|/;
 /** Everything up to and including the label's bar. */
 const LABEL = /^(\s*[A-Ga-g][#b]?\s*\|)/;

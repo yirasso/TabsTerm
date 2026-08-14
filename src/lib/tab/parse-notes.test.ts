@@ -31,6 +31,28 @@ describe("parseTabNotes", () => {
     });
   });
 
+  it("sounds a capo'd tab where the capo puts it", () => {
+    // The page says fret 0 on the top string; with a capo on 2 that sounds F#4,
+    // not E4. Tab is written relative to the capo, so the written number and the
+    // pitch that comes out are not the same thing.
+    const { notes } = parseTabNotes(STAVE, null, 2);
+    const top = notes.find((n) => n.line === 0);
+    expect(top?.fret).toBe(0);
+    expect(top?.midi).toBe((STANDARD_TUNING[0] ?? 0) + 2);
+  });
+
+  it("says which line of the source each stave starts on", () => {
+    // An editor writing a stave back needs to find it again; searching for it
+    // by content would pick the wrong one when two staves are identical.
+    const { blocks } = parseTabNotes(`[intro]\n${STAVE}\n\nsome prose\n${STAVE}`);
+    const staves = blocks.filter((b) => b.kind === "stave");
+    const lines = `[intro]\n${STAVE}\n\nsome prose\n${STAVE}`.split("\n");
+    for (const stave of staves) {
+      expect(lines[stave.firstLine]).toBe(stave.lines[0]);
+    }
+    expect(staves).toHaveLength(2);
+  });
+
   it("reads two-digit frets as one note, not two", () => {
     const { notes } = parseTabNotes(`e|--12--|
 B|------|

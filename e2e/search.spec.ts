@@ -135,7 +135,9 @@ test("the digital guitar plays a tab and walks a cursor across it", async ({ pag
   // AudioContext were suspended, currentTime would not advance and the cursor
   // would never appear.
   await expect(page.getByRole("button", { name: "■ stop" })).toBeVisible();
-  await expect(page.locator('[data-testid="tab-cursor"]')).toBeVisible();
+  // Generous, because this waits on a real audio clock while the transcription
+  // specs are saturating the CPU in another worker.
+  await expect(page.locator('[data-testid="tab-cursor"]')).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("button", { name: "■ stop" }).click();
   await expect(page.locator('[data-testid="tab-cursor"]')).toHaveCount(0);
@@ -150,33 +152,23 @@ test("tab completes a partial command", async ({ page }) => {
   await expect(prompt).toHaveValue("/artist ");
 });
 
-test("tab cycles through the provider values", async ({ page }) => {
+test("the prompt no longer offers a source filter", async ({ page }) => {
   await page.goto("/");
   const prompt = page.getByLabel("search for a song");
 
-  await prompt.fill("/src");
+  // Which sources are searched is the operator's call, set by TAB_PROVIDERS.
+  await prompt.fill("/sr");
   await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/src ");
-
-  await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/src all");
-
-  await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/src local");
-
-  // Shift+Tab walks back.
-  await prompt.press("Shift+Tab");
-  await expect(prompt).toHaveValue("/src all");
-});
-
-test("/src narrows which source is searched", async ({ page }) => {
-  await page.goto("/");
-  const prompt = page.getByLabel("search for a song");
+  await expect(prompt).toHaveValue("/sr");
 
   await prompt.fill("/src local");
   await prompt.press("Enter");
-  // Running the command clears the prompt and records the choice.
-  await expect(prompt).toHaveValue("");
+  await expect(page).toHaveURL(/^[^?]*\/(\?.*)?$/);
+});
+
+test("the results header still says which sources answered", async ({ page }) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
 
   await prompt.fill("greensleeves");
   await prompt.press("Enter");

@@ -5,14 +5,19 @@
 
 import { staveLabels } from "./edit";
 import type { FrettedNote } from "./fretting";
-import { CELL_WIDTH } from "./grid";
+import { CELL_WIDTH, COLUMNS_PER_BAR } from "./grid";
+import { type Tempo, toStep } from "./tempo";
 
-const COLUMNS_PER_BAR = 16;
 const BARS_PER_LINE = 2;
 
 export type AsciiOptions = {
   tuning: string[];
-  /** Columns per second — the time-to-space conversion. */
+  /**
+   * The musical grid. One column becomes one sixteenth note, so the spacing in
+   * the tab is the rhythm rather than a slice of wall-clock time.
+   */
+  tempo?: Tempo;
+  /** Used only when no tempo could be found: columns per second. */
   columnsPerSecond?: number;
 };
 
@@ -22,14 +27,14 @@ export type AsciiOptions = {
  * the reader and the player both depend on.
  */
 export function notesToAscii(notes: FrettedNote[], options: AsciiOptions): string {
-  const { tuning, columnsPerSecond = 8 } = options;
+  const { tuning, tempo, columnsPerSecond = 8 } = options;
   const labels = staveLabels(tuning, tuning.length);
   if (notes.length === 0) return "";
 
   const start = notes[0]?.time ?? 0;
   const placed = notes.map((n) => ({
     ...n,
-    column: Math.round((n.time - start) * columnsPerSecond),
+    column: tempo ? toStep(n.time, tempo) : Math.round((n.time - start) * columnsPerSecond),
   }));
 
   const lastColumn = Math.max(...placed.map((n) => n.column));

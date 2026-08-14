@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 // Ragged lengths and a two-digit fret — the two things that break the grid.
 const RAGGED = `[riff]
@@ -9,12 +9,69 @@ D|--2
 A|--3
 E|-----------`;
 
-test("write, align, publish, then find it in search", async ({ page }) => {
-  await page.goto("/new");
+/** A stave with frets on it, which is what makes a tab playable. */
+const PLAYABLE = `[intro]
+e|0-------3-------7-------12------|
+B|--------------------------------|
+G|--------------------------------|
+D|--------------------------------|
+A|--------------------------------|
+E|--------------------------------|`;
 
-  await page.getByLabel("title").fill("Test Riff");
-  await page.getByLabel("artist").fill("Nobody");
-  await page.getByLabel("tablature").fill(RAGGED);
+/** A cell in the grid. Exact, or "position 1" also matches "position 10". */
+const cell = (string: number, position: number, fret?: number) => ({
+  name: `string ${string}, position ${position}${fret === undefined ? "" : `, fret ${fret}`}`,
+  exact: true,
+});
+
+/**
+ * The tab as it is actually stored. There is no text box to read any more, and
+ * the store is the thing that would be published, so it is the honest source.
+ */
+function content(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const drafts: Record<string, { content: string; updatedAt: number }> =
+      JSON.parse(localStorage.getItem("tabsterm-drafts") ?? "{}")?.state?.drafts ?? {};
+    return Object.values(drafts).sort((a, b) => b.updatedAt - a.updatedAt)[0]?.content ?? "";
+  });
+}
+
+/** Open the editor on a draft that already has something in it. */
+async function openWith(page: Page, tab: string) {
+  await page.addInitScript((text) => {
+    // Runs on every navigation, so seed only when there is nothing there — or
+    // it would wipe whatever the editor saved on the way to the next page.
+    if (localStorage.getItem("tabsterm-drafts")) return;
+    localStorage.setItem(
+      "tabsterm-drafts",
+      JSON.stringify({
+        state: {
+          drafts: {
+            seed: {
+              id: "seed",
+              title: "Seeded",
+              artist: "",
+              type: "tab",
+              tuning: ["E", "A", "D", "G", "B", "E"],
+              capo: 0,
+              difficulty: null,
+              content: text,
+              published: false,
+              updatedAt: 1,
+            },
+          },
+        },
+        version: 1,
+      }),
+    );
+  }, tab);
+  await page.goto("/new?id=seed");
+}
+
+const staveLines = (tab: string) => tab.split("\n").filter((l) => /^[A-Ga-g]\|/.test(l));
+
+test("a ragged tab can be squared up, published, and then found", async ({ page }) => {
+  await openWith(page, RAGGED);
 
   // The grid check names the mismatched widths rather than just complaining.
   await expect(page.getByText(/stave lines are .* characters/)).toBeVisible();
@@ -23,13 +80,17 @@ test("write, align, publish, then find it in search", async ({ page }) => {
   await expect(page.getByText("grid is square.")).toBeVisible();
 
   // Every position is now two characters, so a 12 measures the same as a 0 and
-  // the strings still line up under each other.
-  const aligned = await page.getByLabel("tablature").inputValue();
-  const staves = aligned.split("\n").filter((l) => /^[A-Ga-g]\|/.test(l));
-  expect(new Set(staves.map((l) => l.length)).size).toBe(1);
-  expect(staves[0]).toContain("12");
-  expect(staves[0]).toContain("0-");
+  // the strings still line up under each other. Polled, because autosave is
+  // debounced and the store is a moment behind the screen.
+  await expect
+    .poll(() => content(page).then((t) => new Set(staveLines(t).map((l) => l.length)).size))
+    .toBe(1);
 
+  const lines = staveLines(await content(page));
+  expect(lines[0]).toContain("12");
+  expect(lines[0]).toContain("0-");
+
+  await page.getByLabel("title").fill("Test Riff");
   await page.getByRole("button", { name: "publish" }).click();
   await expect(page).toHaveURL(/\/draft\/[a-z0-9]+/);
   await expect(page.getByRole("heading", { name: "Test Riff" })).toBeVisible();
@@ -40,13 +101,21 @@ test("write, align, publish, then find it in search", async ({ page }) => {
   await expect(page.getByRole("button", { name: /Test Riff/ })).toBeVisible();
 });
 
+test("the editor opens with nothing to click and says so", async ({ page }) => {
+  await page.goto("/new");
+  await expect(page.getByText(/nothing here yet/i)).toBeVisible();
+  // No text box: the grid is the only way in.
+  await expect(page.locator("textarea")).toHaveCount(0);
+});
+
 test("the stave helper inserts a square grid", async ({ page }) => {
   await page.goto("/new");
   await page.getByRole("button", { name: "+ stave" }).click();
 
-  const value = await page.getByLabel("tablature").inputValue();
-  const lines = value.trim().split("\n");
-  expect(lines).toHaveLength(6);
+  await expect(page.getByRole("button", cell(1, 1))).toBeVisible();
+  await expect.poll(() => content(page).then(staveLines)).toHaveLength(6);
+
+  const lines = staveLines(await content(page));
   expect(new Set(lines.map((l) => l.length)).size).toBe(1);
   await expect(page.getByText("grid is square.")).toBeVisible();
 });
@@ -62,6 +131,108 @@ test("publishing is refused until there is something to publish", async ({ page 
   await expect(page.getByRole("button", { name: "publish" })).toBeEnabled();
 });
 
+test("clicking a position and typing a fret writes it into the tab", async ({ page }) => {
+  await page.goto("/new");
+  await page.getByRole("button", { name: "+ stave" }).click();
+
+  // Third string, fourth position — a cell that starts out empty.
+  await page.getByRole("button", cell(3, 4)).click();
+  await page.keyboard.press("7");
+
+  await expect(page.getByRole("button", cell(3, 4, 7))).toBeVisible();
+  await expect.poll(() => content(page).then((t) => staveLines(t)[2])).toContain("7");
+});
+
+test("a two-digit fret does not push the other strings sideways", async ({ page }) => {
+  await page.goto("/new");
+  await page.getByRole("button", { name: "+ stave" }).click();
+
+  // The failure this whole design exists to prevent: `12` is two characters
+  // where `-` was one, and in raw text every string below would now be off.
+  await page.getByRole("button", cell(1, 2)).click();
+  await page.keyboard.press("1");
+  await page.keyboard.press("2");
+
+  await expect(page.getByRole("button", cell(1, 2, 12))).toBeVisible();
+  await expect
+    .poll(() => content(page).then((t) => new Set(staveLines(t).map((l) => l.length)).size))
+    .toBe(1);
+  await expect(page.getByText("grid is square.")).toBeVisible();
+});
+
+test("the selected position blinks, and only that one", async ({ page }) => {
+  await page.goto("/new");
+  await page.getByRole("button", { name: "+ stave" }).click();
+
+  const blinking = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('button[aria-label^="string"]')]
+        .filter((el) => getComputedStyle(el).animationName === "tt-caret")
+        .map((el) => el.getAttribute("aria-label")),
+    );
+
+  expect(await blinking()).toEqual([]);
+
+  await page.getByRole("button", cell(2, 3)).click();
+  expect(await blinking()).toEqual(["string 2, position 3"]);
+
+  // The blink follows the selection rather than piling up behind it.
+  await page.keyboard.press("ArrowRight");
+  expect(await blinking()).toEqual(["string 2, position 4"]);
+});
+
+test("arrows move between positions and backspace clears one", async ({ page }) => {
+  await page.goto("/new");
+  await page.getByRole("button", { name: "+ stave" }).click();
+
+  await page.getByRole("button", cell(1, 1)).click();
+  await page.keyboard.press("5");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("3");
+
+  // Keys go to whatever is focused, so this fails unless the focus followed
+  // the selection.
+  await expect(page.getByRole("button", cell(1, 1, 5))).toBeVisible();
+  await expect(page.getByRole("button", cell(2, 2, 3))).toBeVisible();
+
+  await page.keyboard.press("Backspace");
+  await expect(page.getByRole("button", cell(2, 2, 3))).toHaveCount(0);
+});
+
+test("the editor plays what is being written, and walks a cursor over it", async ({ page }) => {
+  await page.goto("/new");
+
+  // Nothing to play yet, so the bar says so rather than offering a dead button.
+  await expect(page.getByText("no stave to play — text only")).toBeVisible();
+
+  // An empty stave is still nothing to play — it is the frets that make sound.
+  await page.getByRole("button", { name: "+ stave" }).click();
+  await expect(page.getByText("no stave to play — text only")).toBeVisible();
+
+  await page.getByRole("button", cell(1, 1)).click();
+  await page.keyboard.press("5");
+  await page.getByRole("button", { name: "▶ play" }).click();
+
+  // Chromium headless has no audio device, so the cursor is what proves the
+  // player is running. It marks a column, so it lands on every string at once.
+  await expect(page.getByRole("button", { name: "■ stop" })).toBeVisible();
+  await expect(page.locator('[data-testid="tab-cursor"]').first()).toBeVisible({
+    timeout: 15_000,
+  });
+
+  await page.getByRole("button", { name: "■ stop" }).click();
+  await expect(page.locator('[data-testid="tab-cursor"]')).toHaveCount(0);
+});
+
+test("the editor's tempo control changes the tempo", async ({ page }) => {
+  await openWith(page, PLAYABLE);
+
+  await expect(page.getByText("96 bpm")).toBeVisible();
+  await page.getByRole("button", { name: "+", exact: true }).click();
+  await expect(page.getByText("100 bpm")).toBeVisible();
+});
+
 test("a draft from another browser is explained, not crashed", async ({ page }) => {
   await page.goto("/draft/doesnotexist");
   await expect(page.getByText(/no such draft in this browser/i)).toBeVisible();
@@ -74,5 +245,5 @@ test("/new reaches the editor from the prompt", async ({ page }) => {
   await prompt.fill("/new");
   await prompt.press("Enter");
   await expect(page).toHaveURL(/\/new/);
-  await expect(page.getByLabel("tablature")).toBeVisible();
+  await expect(page.getByRole("button", { name: "+ stave" })).toBeVisible();
 });

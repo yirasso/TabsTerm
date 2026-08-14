@@ -39,6 +39,11 @@ npm run check     # typecheck + biome + vitest
   declaration went invalid, and every tab silently rendered in a proportional font.
 - **Search results must not carry tab content.** `localProvider.search` parses through
   `songSummarySchema` specifically to strip it.
+- **A fret number is not a pitch.** Tab is written relative to the capo, so anything that
+  sounds a note must add `capo` to the open string — `parseTabNotes(content, tuning, capo)`
+  does this, and every caller has to pass it or the whole piece plays in the wrong key.
+  Transcription runs `detectCapo` *before* `assignFrets` for the same reason: the capo
+  decides which neck the notes are being placed on.
 - **`searchAllProviders` may only narrow `TAB_PROVIDERS`, never widen it.** The
   `provider` query param is a client-supplied filter; treating it as a way to enable a
   source would let anyone switch on what the operator turned off. There is an e2e test
@@ -48,12 +53,25 @@ npm run check     # typecheck + biome + vitest
   cannot deliver.
 - **Guitar tablature only.** No chord sheets, bass or ukulele. `tabTypeSchema` keeps a
   single member so one can come back cheaply, but nothing displays it.
-- **Audio analysis is one path, and it produces tabs.** `/listen` runs Basic Pitch over
-  a recording of one instrument. There is no chord-detection path — that was removed
-  along with essentia.js.
-- **The source filter (`/src`) is session-only on purpose.** With no indicator in the
-  header, a filter that survived a reload would silently haunt the reader. Do not add
-  `persist` to `src/stores/prefs.ts` without also adding a visible indicator.
+- **Audio analysis is one path, and it produces tabs.** `transcribeAudio`
+  (`src/lib/audio/transcribe.ts`) runs Basic Pitch over a recording of one instrument.
+  There is no chord-detection path — that was removed along with essentia.js.
+- **Tabs are written through the grid, not typed as text.** `/new` renders every
+  position as a clickable cell (`src/components/editor/tab-grid.tsx`) over the cell model
+  in `src/lib/tab/cells.ts`; there is no textarea. Editing through cells is what makes
+  alignment impossible to break — a fret replaces a fixed-width cell instead of pushing
+  the line sideways — so do not add a raw text box back without deciding what happens
+  when the two disagree. `align grid` stays for content that arrives ragged from
+  elsewhere.
+- **Transcribing is a way of starting a tab, not a place to go.** It lives as a control
+  inside the `/new` editor, so what comes out lands in a draft that already has the
+  title, tuning and capo fields it needs. There is no `/listen` route; a page of its own
+  meant the result had to be teleported into an editor afterwards.
+- **There is no reader-facing source filter.** `/api/search` still takes `?provider=`
+  and `searchAllProviders` still honours it, but nothing in the UI sets one — which
+  sources are searched is decided once, by the operator, in `TAB_PROVIDERS`. The `/src`
+  command and `src/stores/prefs.ts` are gone; a filter with no indicator in the header
+  silently haunted the reader, and an indicator was not worth the header space.
 - **The daily quote is picked on the server** (`src/data/quotes.ts` + `revalidate` on
   the home page), never client-side — computing it during render on both sides is a
   hydration mismatch waiting for midnight.

@@ -27,8 +27,12 @@ export type PlaybackState = {
   setBpm: (next: number | ((prev: number) => number)) => void;
 };
 
-export function useTabPlayback(content: string | null, tuning: string[] | null): PlaybackState {
-  const [parsed, setParsed] = useState<ParsedTab>(() => parseTabNotes(content, tuning));
+export function useTabPlayback(
+  content: string | null,
+  tuning: string[] | null,
+  capo = 0,
+): PlaybackState {
+  const [parsed, setParsed] = useState<ParsedTab>(() => parseTabNotes(content, tuning, capo));
   const [playing, setPlaying] = useState(false);
   const [bpm, setBpm] = useState(96);
   const [column, setColumn] = useState(-1);
@@ -41,8 +45,8 @@ export function useTabPlayback(content: string | null, tuning: string[] | null):
   bpmRef.current = bpm;
 
   useEffect(() => {
-    setParsed(parseTabNotes(content, tuning));
-  }, [content, tuning]);
+    setParsed(parseTabNotes(content, tuning, capo));
+  }, [content, tuning, capo]);
 
   const stop = useCallback(() => {
     setPlaying(false);

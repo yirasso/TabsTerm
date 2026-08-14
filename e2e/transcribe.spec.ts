@@ -1,4 +1,19 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+
+/**
+ * The tab as it is actually stored. The editor has no text box any more, so the
+ * draft store is where the result of a transcription can be read.
+ */
+function content(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const drafts: Record<string, { content: string; updatedAt: number }> =
+      JSON.parse(localStorage.getItem("tabsterm-drafts") ?? "{}")?.state?.drafts ?? {};
+    return Object.values(drafts).sort((a, b) => b.updatedAt - a.updatedAt)[0]?.content ?? "";
+  });
+}
+
+const transcribed = (page: Page) =>
+  expect.poll(() => content(page), { timeout: 90_000 }).toContain("take 1");
 
 /**
  * Builds a WAV in the page and hands it to the file input, so the whole chain —
@@ -43,16 +58,19 @@ const SYNTH = `(midiGroups, seconds, wave, inputId) => {
   });
 }`;
 
-test("the page promises that audio stays on the machine", async ({ page }) => {
-  await page.goto("/listen");
-  await expect(page.getByText(/audio never leaves this browser/i)).toBeVisible();
+test("the editor promises that audio stays on the machine", async ({ page }) => {
+  await page.goto("/new");
+  await expect(page.getByText(/it never leaves this browser/i)).toBeVisible();
   // It must set expectations about what it can and cannot pull apart.
-  await expect(page.getByText(/a full band mix will come back as noise/i)).toBeVisible();
+  await expect(page.getByText(/one guitar, alone/i)).toBeVisible();
 });
 
 test("a solo melody becomes tablature with the right frets", async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto("/listen");
+  await page.goto("/new");
+  // The editor mounts a draft on the client, so the file input is not in the
+  // first paint.
+  await page.waitForSelector("#audio-file");
 
   // E4 G4 B4 E5 — all reachable on the top string at frets 0, 3, 7 and 12.
   await page.evaluate(
@@ -62,10 +80,12 @@ test("a solo melody becomes tablature with the right frets", async ({ page }) =>
     [SYNTH, [[64], [67], [71], [76]]] as const,
   );
 
-  await expect(page).toHaveURL(/\/new\?id=/, { timeout: 90_000 });
+  await transcribed(page);
 
-  const value = await page.getByLabel("tablature").inputValue();
-  expect(value).toContain("[take 1]");
+  const value = await content(page);
+  // The heading carries whatever the analysis worked out — a tempo when the
+  // playing had a pulse it could find, and a capo when one was in the way.
+  expect(value).toMatch(/^\[take 1( · [^\]]+)?\]/);
   // Every detected pitch must land on a fret that actually produces it.
   for (const fret of ["0", "3", "7", "12"]) {
     expect(value).toContain(fret);
@@ -75,7 +95,10 @@ test("a solo melody becomes tablature with the right frets", async ({ page }) =>
 
 test("notes struck together land on different strings", async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto("/listen");
+  await page.goto("/new");
+  // The editor mounts a draft on the client, so the file input is not in the
+  // first paint.
+  await page.waitForSelector("#audio-file");
 
   // An open E minor triad, all three notes at once.
   await page.evaluate(
@@ -85,21 +108,45 @@ test("notes struck together land on different strings", async ({ page }) => {
     [SYNTH, [[64, 59, 55]]] as const,
   );
 
-  await expect(page).toHaveURL(/\/new\?id=/, { timeout: 90_000 });
+  await transcribed(page);
 
-  const value = await page.getByLabel("tablature").inputValue();
   // Two frets cannot share a string at the same instant, so a chord must show
   // up on more than one stave line.
-  const linesWithFrets = value
+  const linesWithFrets = (await content(page))
     .split("\n")
     .filter((line) => /^[A-Ga-g]\|/.test(line) && /\d/.test(line));
   expect(linesWithFrets.length).toBeGreaterThan(1);
 });
 
-test("/listen reaches the page from the prompt", async ({ page }) => {
+test("transcribing keeps what was already written", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/new");
+  await page.waitForSelector("#audio-file");
+
+  // Something already written by hand, through the grid.
+  await page.getByRole("button", { name: "+ section" }).click();
+  await page.getByRole("button", { name: "+ stave" }).click();
+  await page.getByRole("button", { name: "string 1, position 1", exact: true }).click();
+  await page.keyboard.press("4");
+
+  await page.evaluate(
+    ([fn, notes]) =>
+      // biome-ignore lint/security/noGlobalEval: driving the page's own APIs
+      eval(fn as string)(notes, 0.6, "triangle", "audio-file"),
+    [SYNTH, [[64], [67]]] as const,
+  );
+
+  await transcribed(page);
+  // Reaching for the microphone must never cost someone the tab they wrote.
+  const value = await content(page);
+  expect(value).toContain("[section]");
+  expect(value.indexOf("[section]")).toBeLessThan(value.indexOf("take 1"));
+});
+
+test("the prompt no longer offers a place to go and listen", async ({ page }) => {
   await page.goto("/");
   const prompt = page.getByLabel("search for a song");
   await prompt.fill("/listen");
   await prompt.press("Enter");
-  await expect(page).toHaveURL(/\/listen/);
+  await expect(page).toHaveURL(/^[^?]*\/(\?.*)?$/);
 });

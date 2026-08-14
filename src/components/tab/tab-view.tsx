@@ -3,12 +3,14 @@
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { CommandLine } from "@/components/chrome/command-line";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
 import { useTabPlayback } from "@/hooks/use-tab-playback";
 import type { Tab } from "@/server/tabs/types";
 import { favKey, useSession } from "@/stores/session";
 import { anyModalOpen } from "@/stores/ui";
 import { CapabilityBadge } from "./capability-badge";
+import { PlaybackBar } from "./playback-bar";
 import { TabRender } from "./tab-render";
 
 export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
@@ -18,6 +20,7 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
   const { parsed, playable, playing, bpm, column, toggle, stop, setBpm } = useTabPlayback(
     tab.content,
     tab.tuning,
+    tab.capo ?? 0,
   );
 
   const [autoscroll, setAutoscroll] = useState(true);
@@ -81,23 +84,22 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
     tab.provider,
   ].filter((m): m is string => Boolean(m));
 
-  const totalBars = Math.max(1, Math.ceil(parsed.totalColumns / 16));
-  const currentBar = column < 0 ? 0 : Math.min(totalBars, Math.floor(column / 16) + 1);
-
   return (
     <>
       <main
         className={`mx-auto px-[22px] pb-[140px] pt-7 ${focusMode ? "max-w-[1100px]" : "max-w-[900px]"}`}
       >
         {!focusMode && (
-          <div className="mb-1 text-term-dim">
-            <span className="text-term-accent">$</span> open {tab.provider}/{tab.id}
-          </div>
+          <CommandLine>
+            open {tab.provider}/{tab.id}
+          </CommandLine>
         )}
 
-        <div className="mb-1.5 flex flex-wrap items-baseline gap-x-[18px] gap-y-1.5 border-b border-term-fg pb-2.5">
-          <h1 className="font-bold text-[19px]">{tab.title}</h1>
-          <span className="text-term-dim">· {tab.artist}</span>
+        {/* The song is what this screen is about, so it takes the display step
+            and the path above it drops to chrome. */}
+        <div className="mt-2 mb-1.5 flex flex-wrap items-baseline gap-x-[18px] gap-y-1.5 border-term-fg border-b-2 pb-3">
+          <h1 className="tt-display font-bold">{tab.title}</h1>
+          <span className="text-[15px] text-term-dim">· {tab.artist}</span>
           <span className="flex-1" />
           <span className="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-[11px] text-term-faint">
             <CapabilityBadge capability={tab.capability} detailed />
@@ -130,46 +132,17 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
         )}
       </main>
 
-      <div className="fixed right-0 bottom-0 left-0 z-[6] flex flex-wrap items-center gap-5 border-term-line border-t bg-term-panel px-[22px] py-2.5 text-[12px]">
-        {playable ? (
-          <>
-            <button
-              type="button"
-              onClick={toggle}
-              className="w-[74px] text-left text-term-accent hover:text-term-fg"
-            >
-              {playing ? "■ stop" : "▶ play"}
-            </button>
-            <span className="text-term-dim">
-              bar {currentBar} / {totalBars}
-            </span>
-            <span className="flex items-center gap-2 text-term-dim">
-              <button type="button" onClick={() => setBpm((b) => b - 4)} className="px-1">
-                -
-              </button>
-              <span className="text-term-fg">{bpm} bpm</span>
-              <button type="button" onClick={() => setBpm((b) => b + 4)} className="px-1">
-                +
-              </button>
-            </span>
-            <button
-              type="button"
-              onClick={() => setAutoscroll((v) => !v)}
-              className={autoscroll ? "text-term-fg" : "text-term-faint"}
-            >
-              autoscroll {autoscroll ? "on" : "off"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setFocusMode((v) => !v)}
-              className={focusMode ? "text-term-fg" : "text-term-faint"}
-            >
-              focus {focusMode ? "on" : "off"}
-            </button>
-          </>
-        ) : (
-          <span className="text-term-faint">no stave to play — text only</span>
-        )}
+      <PlaybackBar
+        playable={playable}
+        playing={playing}
+        bpm={bpm}
+        column={column}
+        totalColumns={parsed.totalColumns}
+        toggle={toggle}
+        setBpm={setBpm}
+        autoscroll={{ on: autoscroll, toggle: () => setAutoscroll((v) => !v) }}
+        focus={{ on: focusMode, toggle: () => setFocusMode((v) => !v) }}
+      >
         <button
           type="button"
           onClick={toggleFav}
@@ -181,7 +154,7 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
         <button type="button" onClick={back} className="text-term-faint hover:text-term-fg">
           [esc] back
         </button>
-      </div>
+      </PlaybackBar>
     </>
   );
 }

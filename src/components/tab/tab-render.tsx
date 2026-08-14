@@ -61,7 +61,9 @@ export function TabRender({
                 style={{ left: `calc(1rem + ${local}ch)` }}
               />
             )}
-            <pre className="tab-content relative text-[13px] leading-[1.8] tracking-[0.02em]">
+            {/* The tablature is the artifact, not a code sample. At 13px it
+                read like a footnote to its own page. */}
+            <pre className="tab-content relative text-[15px] leading-[1.85] tracking-[0.02em]">
               {block.lines.join("\n")}
             </pre>
           </div>

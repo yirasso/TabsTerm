@@ -41,6 +41,11 @@ export type TabBlock = { id: string } & (
       width: number;
       /** Add this to a local column to get a global one. */
       columnOffset: number;
+      /**
+       * Index of this stave's first line in the source text, so an editor can
+       * write the stave back where it came from without re-finding it.
+       */
+      firstLine: number;
     }
 );
 
@@ -59,6 +64,29 @@ const LABEL_LINE = /^\s*\[(.+)\]\s*$/;
 const PITCH_CLASS: Record<string, number> = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
 
 /**
+ * Note names to open-string pitches, high string first — what the analysis needs
+ * to know before it can decide where a pitch is played.
+ *
+ * Names carry no octave, so each one is anchored to the register standard tuning
+ * puts that string in. Otherwise drop-D reads as a D an octave off and every
+ * fret on the bottom string comes out twelve too high.
+ */
+export function tuningToMidi(declared: string[] | null, strings = 6): number[] {
+  const fallback = strings === 4 ? BASS_TUNING : STANDARD_TUNING;
+  if (!declared || declared.length !== fallback.length) return fallback;
+
+  // Tunings are written low string first; stave lines run high string first.
+  return [...declared].reverse().map((note, i) => {
+    const base = fallback[i] ?? 40;
+    const wanted = PITCH_CLASS[note.slice(0, 1).toLowerCase()];
+    if (wanted === undefined) return base;
+    const accidental = note.includes("#") ? 1 : note.includes("b") ? -1 : 0;
+    const target = wanted + accidental;
+    return target + Math.round((base - target) / 12) * 12;
+  });
+}
+
+/**
  * Pick the MIDI base for each line. When the stave's labels match the declared
  * tuning's note names we trust the tuning; otherwise fall back to standard,
  * which is what the overwhelming majority of tab uses.
@@ -67,22 +95,12 @@ function tuningFor(lines: string[], declared: string[] | null): number[] {
   const fallback = lines.length === 4 ? BASS_TUNING : STANDARD_TUNING;
   if (!declared || declared.length !== lines.length) return fallback;
 
-  // Tunings are written low string first; stave lines run high string first.
   const highFirst = [...declared].reverse();
   const labels = lines.map((l) => STAVE_LINE.exec(l)?.[1]?.toLowerCase() ?? "");
   const matches = highFirst.every((note, i) => note.slice(0, 1).toLowerCase() === labels[i]);
   if (!matches) return fallback;
 
-  // Anchor to the fallback's octaves and shift by the declared pitch class, so
-  // drop-D or DADGAD lands in the right register instead of an octave away.
-  return highFirst.map((note, i) => {
-    const base = fallback[i] ?? 40;
-    const wanted = PITCH_CLASS[note.slice(0, 1).toLowerCase()];
-    if (wanted === undefined) return base;
-    const accidental = note.includes("#") ? 1 : note.includes("b") ? -1 : 0;
-    const target = wanted + accidental;
-    return target + Math.round((base - target) / 12) * 12;
-  });
+  return tuningToMidi(declared, lines.length);
 }
 
 function readNotes(lines: string[], tuning: number[]): TabNote[] {
@@ -111,7 +129,17 @@ function readNotes(lines: string[], tuning: number[]): TabNote[] {
   return notes;
 }
 
-export function parseTabNotes(content: string | null, tuning: string[] | null = null): ParsedTab {
+/**
+ * `capo` shifts every note up by that many frets. Tablature is written relative
+ * to the capo — that is the whole point of one, the shapes stay in first
+ * position — so the numbers on the page are not the pitches that sound, and
+ * playing them back untransposed puts the whole piece in the wrong key.
+ */
+export function parseTabNotes(
+  content: string | null,
+  tuning: string[] | null = null,
+  capo = 0,
+): ParsedTab {
   const empty: ParsedTab = { blocks: [], notes: [], totalColumns: 0 };
   if (!content) return empty;
 
@@ -120,6 +148,7 @@ export function parseTabNotes(content: string | null, tuning: string[] | null = 
   let offset = 0;
 
   let staveRun: string[] = [];
+  let staveStart = 0;
   let textRun: string[] = [];
 
   const nextId = (kind: string) => `${kind}-${blocks.length}`;
@@ -133,7 +162,7 @@ export function parseTabNotes(content: string | null, tuning: string[] | null = 
   const flushStave = () => {
     // Four lines is the smallest real stave (bass); fewer is a false positive.
     if (staveRun.length >= 4) {
-      const staveTuning = tuningFor(staveRun, tuning);
+      const staveTuning = tuningFor(staveRun, tuning).map((open) => open + capo);
       const local = readNotes(staveRun, staveTuning);
       const width = Math.max(...staveRun.map((l) => l.length), 0);
 
@@ -144,6 +173,7 @@ export function parseTabNotes(content: string | null, tuning: string[] | null = 
         notes: local,
         width,
         columnOffset: offset,
+        firstLine: staveStart,
       });
       for (const note of local) notes.push({ ...note, column: note.column + offset });
       offset += width;
@@ -153,11 +183,14 @@ export function parseTabNotes(content: string | null, tuning: string[] | null = 
     staveRun = [];
   };
 
-  for (const line of content.split(/\r?\n/)) {
+  content.split(/\r?\n/).forEach((line, index) => {
     if (STAVE_LINE.test(line)) {
-      if (staveRun.length === 0) flushText();
+      if (staveRun.length === 0) {
+        flushText();
+        staveStart = index;
+      }
       staveRun.push(line);
-      continue;
+      return;
     }
 
     flushStave();
@@ -169,7 +202,7 @@ export function parseTabNotes(content: string | null, tuning: string[] | null = 
     } else {
       textRun.push(line);
     }
-  }
+  });
 
   flushStave();
   flushText();

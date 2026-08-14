@@ -113,6 +113,49 @@ input::placeholder {
   color: var(--tt-bg);
 }
 
+/*
+ * Keyboard focus. Every control in the app sets `outline-none` so the hover
+ * borders can do the talking, which left anyone navigating by keyboard with
+ * nothing at all. A themed ring costs one rule and is the difference between a
+ * keyboard-first product and one that only claims to be.
+ */
+:focus-visible {
+  outline: 2px solid var(--tt-accent);
+  outline-offset: 2px;
+}
+/*
+ * Except where something already says it louder. A text field answers with its
+ * caret, and boxing the prompt turns a terminal line into a form control; a
+ * selected cell in the tab grid is already blinking inverted, and a ring around
+ * it is a second announcement of the same thing.
+ */
+input:focus-visible,
+textarea:focus-visible,
+.tt-caret:focus-visible {
+  outline: none;
+}
+
+/* The scrollbar is part of the terminal too. */
+* {
+  scrollbar-color: var(--tt-line) transparent;
+  scrollbar-width: thin;
+}
+
+/*
+ * The one display step.
+ *
+ * The app had no type scale worth the name — everything sat between 11 and
+ * 15px, including the tablature, which is the product. This is the size that
+ * means "this is what the screen is about", and every surface spends it exactly
+ * once: the prompt on the home screen, the query on results, the song on a tab,
+ * the stave in the editor.
+ */
+.tt-display {
+  font-size: clamp(21px, 3.1vw, 32px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
 @keyframes tt-blink {
   0%,
   49% {
@@ -129,6 +172,25 @@ input::placeholder {
   }
   to {
     opacity: 1;
+  }
+}
+/*
+ * The blink for a cell you are about to type a fret into.
+ *
+ * It alternates between inverted and outlined rather than fading out, because
+ * the fret already in the cell has to stay readable the whole time — blinking
+ * it to nothing would hide the very number you are deciding whether to change.
+ */
+@keyframes tt-caret {
+  0%,
+  49% {
+    background: var(--tt-accent);
+    color: var(--tt-bg);
+  }
+  50%,
+  100% {
+    background: transparent;
+    color: var(--tt-accent);
   }
 }
 
@@ -161,6 +223,16 @@ input::placeholder {
 }
 .tt-cursor {
   animation: tt-blink 1.05s steps(1) infinite;
+}
+/*
+ * Inverted on its own, so that reduced-motion viewers — for whom the animation
+ * below is cut to a single 0.01ms pass — are still left with a selected cell
+ * they can see.
+ */
+.tt-caret {
+  background: var(--tt-accent);
+  color: var(--tt-bg);
+  animation: tt-caret 1.05s steps(1) infinite;
 }
 
 /* ASCII tablature must never reflow — it is a fixed-width grid. */

@@ -1,17 +1,12 @@
 import { COMMANDS } from "./commands";
 
 export type CompletionContext = {
-  /** Provider ids the server has enabled. */
-  providers: string[];
   /** Titles currently on screen, so `/tab gree` can finish the song name. */
   songs?: string[];
 };
 
 /** Live cycle position. Null once the user types anything that is not Tab. */
 export type CycleState = { candidates: string[]; index: number; applied: string } | null;
-
-/** "all" is not a source — it is the absence of a filter. */
-export const SOURCE_ALL = "all";
 
 const SPLIT = /^(\S+)\s+([\s\S]*)$/;
 const TAKES_SONG = new Set(["/tab", "/artist"]);
@@ -21,9 +16,7 @@ function commandWord(name: string) {
 }
 
 function argCandidates(cmd: string, ctx: CompletionContext): string[] {
-  if (cmd === "/src") return [SOURCE_ALL, ...ctx.providers];
-  if (TAKES_SONG.has(cmd)) return ctx.songs ?? [];
-  return [];
+  return TAKES_SONG.has(cmd) ? (ctx.songs ?? []) : [];
 }
 
 /**

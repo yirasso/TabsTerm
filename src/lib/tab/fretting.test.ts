@@ -1,8 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { assignFrets, type PitchEvent } from "./fretting";
+import { assignFrets, detectCapo, type PitchEvent } from "./fretting";
 import { STANDARD_TUNING } from "./parse-notes";
 
 const at = (midi: number, time: number): PitchEvent => ({ midi, time, duration: 0.25 });
+
+/** A run of notes drawn from open strings and first-position frets. */
+function firstPosition(shift: number): PitchEvent[] {
+  const shapes = [0, 0, 1, 2, 3, 0, 2, 0, 1, 3, 0, 2];
+  return STANDARD_TUNING.flatMap((open, s) =>
+    shapes.map((fret, i) => at(open + fret + shift, s * 12 + i)),
+  );
+}
+
+describe("detectCapo", () => {
+  it("reports no capo when the playing already sits on open strings", () => {
+    expect(detectCapo(firstPosition(0), STANDARD_TUNING)).toBe(0);
+  });
+
+  it("finds the capo that puts the playing back in first position", () => {
+    // Not 5 or 7: the strings are a fourth apart, so shifting by a fourth lands
+    // every string on its neighbour and the capo genuinely cannot be told from
+    // no capo at all.
+    for (const fret of [1, 2, 3, 6]) {
+      expect(detectCapo(firstPosition(fret), STANDARD_TUNING)).toBe(fret);
+    }
+  });
+
+  it("does not invent a capo when nothing suggests one", () => {
+    // A chromatic run belongs to no key, so every capo position suits it
+    // equally. With no reason to prefer one, claim none.
+    const chromatic = Array.from({ length: 24 }, (_, i) => at(52 + i, i * 0.3));
+    expect(detectCapo(chromatic, STANDARD_TUNING)).toBe(0);
+  });
+
+  it("says nothing about silence", () => {
+    expect(detectCapo([], STANDARD_TUNING)).toBe(0);
+  });
+});
 
 describe("assignFrets", () => {
   it("prefers an open string when the pitch allows one", () => {
@@ -42,6 +76,13 @@ describe("assignFrets", () => {
   it("never places a note past the twentieth fret", () => {
     const notes = assignFrets([at(100, 0)], STANDARD_TUNING);
     for (const note of notes) expect(note.fret).toBeLessThanOrEqual(20);
+  });
+
+  it("takes the low fret when the same pitch is available twice", () => {
+    // An ascending arpeggio, every note reachable both on the top string low
+    // down and on the string below it higher up. A guitarist plays it low.
+    const notes = assignFrets([at(64, 0), at(67, 0.5), at(71, 1), at(76, 1.5)], STANDARD_TUNING);
+    expect(notes.map((n) => n.fret)).toEqual([0, 3, 7, 12]);
   });
 
   it("returns notes in time order", () => {

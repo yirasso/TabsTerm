@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CommandLine } from "@/components/chrome/command-line";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
 import { CapabilityBadge } from "@/components/tab/capability-badge";
 import type { Quote } from "@/data/quotes";
@@ -13,11 +14,10 @@ import { useSongSearch } from "@/hooks/use-song-search";
 import { slugify } from "@/lib/utils";
 import { CAPABILITY_LABEL, type SongSummary } from "@/server/tabs/types";
 import { DRAFT_PROVIDER, draftToSummary, useDrafts } from "@/stores/drafts";
-import { usePrefs } from "@/stores/prefs";
 import { type FavEntry, useSession } from "@/stores/session";
 import { anyModalOpen, useUi } from "@/stores/ui";
-import { COMMANDS, LEAVES_PROMPT, parseCommand, randomHref, searchTermFor } from "./commands";
-import { type CycleState, nextCompletion, SOURCE_ALL } from "./completion";
+import { COMMANDS, LEAVES_PROMPT, parseCommand, searchTermFor } from "./commands";
+import { type CycleState, nextCompletion } from "./completion";
 import { useGhostTyper } from "./use-ghost-typer";
 
 const INTRO = `tabsterm — guitar tablature behind a text prompt.
@@ -34,7 +34,7 @@ function noResultsText(term: string) {
   · or write it yourself with /new`;
 }
 
-export function TerminalApp({ providers = [], quote }: { providers?: string[]; quote?: Quote }) {
+export function TerminalApp({ quote }: { quote?: Quote }) {
   const router = useRouter();
   const [query, setQuery] = useQueryState("q", { defaultValue: "", shallow: true });
   const [view, setView] = useQueryState("view", { shallow: true });
@@ -51,8 +51,6 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
   const favs = useSession((s) => s.favs);
   const toggleFav = useSession((s) => s.toggleFav);
   const { cycle } = useThemeCycle();
-  const provider = usePrefs((s) => s.provider);
-  const setProvider = usePrefs((s) => s.setProvider);
 
   const debounced = useDebouncedValue(query, 250);
   const term = searchTermFor(debounced);
@@ -80,35 +78,19 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
   const degraded = data?.degraded ?? [];
 
   // What the area under the prompt shows: the day's quote when nothing is
-  // typed, source values while completing /src, commands while typing a slash
-  // command, live search hits otherwise.
+  // typed, commands while typing a slash command, live search hits otherwise.
   const trimmed = query.trim().toLowerCase();
-  const sourceOptions =
-    cmd?.cmd === "/src"
-      ? [SOURCE_ALL, ...providers].filter((p) => p.startsWith(cmd.arg.toLowerCase()))
-      : [];
   const showQuote = !trimmed;
-  const showSources = !showQuote && sourceOptions.length > 0;
-  const showCommands = !showQuote && !showSources && isCmd;
+  const showCommands = !showQuote && isCmd;
   const commandSuggestions = COMMANDS.filter(
     (c) => trimmed === "/" || c.name.startsWith(trimmed.split(" ")[0] ?? ""),
   );
   const songSuggestions = filteredResults.slice(0, 6);
-  const listLength = showSources
-    ? sourceOptions.length
-    : showCommands
-      ? commandSuggestions.length
-      : showQuote
-        ? 0
-        : songSuggestions.length;
-
-  const applySource = (value: string) => {
-    setProvider(value === SOURCE_ALL ? null : value);
-    setQuery("");
-    setSel(0);
-    setSelMoved(false);
-    setTimeout(() => inputRef.current?.focus(), 30);
-  };
+  const listLength = showCommands
+    ? commandSuggestions.length
+    : showQuote
+      ? 0
+      : songSuggestions.length;
 
   const songHref = (s: Pick<SongSummary, "provider" | "id">, from: Screen) => {
     // Drafts live in this browser, so they get a client-rendered route of their
@@ -141,15 +123,8 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
     if (c.cmd === "/theme") return cycle();
     if (c.cmd === "/auth") return openAuth();
     if (c.cmd === "/man") return openAbout();
-    if (c.cmd === "/random") return router.push(randomHref(provider));
+    if (c.cmd === "/random") return router.push("/random" as Route);
     if (c.cmd === "/new") return router.push("/new" as Route);
-    if (c.cmd === "/listen") return router.push("/listen" as Route);
-    if (c.cmd === "/src") {
-      const wanted = c.arg.toLowerCase();
-      if (wanted === SOURCE_ALL) return applySource(SOURCE_ALL);
-      if (providers.includes(wanted)) return applySource(wanted);
-      return;
-    }
     if (["/tab", "/artist"].includes(c.cmd) && c.arg) {
       setView("results");
       setSel(0);
@@ -171,11 +146,6 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
 
   const submit = () => {
     if (!query.trim()) return;
-    if (showSources) {
-      const pick = sourceOptions[sel];
-      if (pick) applySource(pick);
-      return;
-    }
     if (isCmd) {
       const pick = commandSuggestions[sel];
       if (cmd?.arg || !pick) runCommand(query);
@@ -247,14 +217,15 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
   });
 
   const ghost = useGhostTyper(screen === "home" && !query);
-  const promptLabel = `${user?.handle ?? "user"}@tabsterm:~$`;
+  // No trailing `$` — the prompt line below carries it, at the size that counts,
+  // and two of them reads like a stutter.
+  const promptLabel = `${user?.handle ?? "user"}@tabsterm:~`;
 
   const onPromptKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Tab") {
       // Tab belongs to the prompt here, not to focus navigation.
       e.preventDefault();
       const step = nextCompletion(query, cycleRef.current, e.shiftKey ? -1 : 1, {
-        providers,
         songs: songSuggestions.map((s) => s.title),
       });
       if (!step) return;
@@ -283,58 +254,51 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
         <pre className="mb-1.5 whitespace-pre-wrap text-[12px] text-term-dim">{INTRO}</pre>
         <div className="h-11" aria-hidden />
 
-        <label
-          htmlFor="prompt"
-          className="flex cursor-text items-baseline gap-2.5 border-b border-term-fg pb-2.5"
-        >
-          <span className="whitespace-nowrap text-[15px] text-term-accent">{promptLabel}</span>
-          <span className="relative min-w-0 flex-1">
-            <input
-              id="prompt"
-              ref={inputRef}
-              aria-label="search for a song"
-              value={query}
-              onChange={(e) => {
-                // Typing anything abandons the completion cycle.
-                cycleRef.current = null;
-                setQuery(e.target.value);
-                setSel(0);
-                setSelMoved(false);
-              }}
-              onKeyDown={onPromptKey}
-              spellCheck={false}
-              autoComplete="off"
-              className="w-full border-0 bg-transparent p-0 text-[15px] caret-term-accent outline-none"
-            />
+        {/* The prompt is what this screen is for, so it gets the display step
+            and the machine name drops to a size that introduces it rather than
+            competing with it. */}
+        <label htmlFor="prompt" className="block cursor-text border-b-2 border-term-fg pb-3">
+          <span className="mb-1 block text-[11px] text-term-faint">{promptLabel}</span>
+          <span className="tt-display flex items-baseline gap-[0.4em]">
+            <span className="flex-none text-term-accent">$</span>
+            <span className="relative min-w-0 flex-1">
+              <input
+                id="prompt"
+                ref={inputRef}
+                aria-label="search for a song"
+                value={query}
+                onChange={(e) => {
+                  // Typing anything abandons the completion cycle.
+                  cycleRef.current = null;
+                  setQuery(e.target.value);
+                  setSel(0);
+                  setSelMoved(false);
+                }}
+                onKeyDown={onPromptKey}
+                spellCheck={false}
+                autoComplete="off"
+                className="w-full border-0 bg-transparent p-0 text-[length:inherit] leading-[inherit] tracking-[inherit] caret-term-accent outline-none"
+              />
+              {!query && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute top-0 left-0 truncate text-term-faint"
+                >
+                  {ghost}
+                </span>
+              )}
+            </span>
             {!query && (
               <span
                 aria-hidden
-                className="pointer-events-none absolute left-0 top-0 text-[15px] text-term-faint"
-              >
-                {ghost}
-              </span>
+                className="tt-cursor h-[0.78em] w-[0.5em] flex-none translate-y-[0.06em] bg-term-accent"
+              />
             )}
           </span>
-          {!query && (
-            <span aria-hidden className="tt-cursor h-[17px] w-2 flex-none bg-term-accent" />
-          )}
         </label>
 
         <div className="mt-[18px] min-h-[200px]">
           {showQuote && quote && <DailyQuote quote={quote} />}
-
-          {showSources &&
-            sourceOptions.map((p, i) => (
-              <SuggestionRow
-                key={p}
-                on={i === sel}
-                idx={i}
-                title={p}
-                sub={p === SOURCE_ALL ? "every enabled source" : "this source only"}
-                tag={(provider ?? SOURCE_ALL) === p ? "active" : "src"}
-                onPick={() => applySource(p)}
-              />
-            ))}
 
           {showCommands &&
             commandSuggestions.map((c, i) => (
@@ -350,7 +314,6 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
             ))}
 
           {!showQuote &&
-            !showSources &&
             !showCommands &&
             songSuggestions.map((s, i) => (
               <SuggestionRow
@@ -364,7 +327,7 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
               />
             ))}
 
-          {!showQuote && !showSources && !showCommands && (
+          {!showQuote && !showCommands && (
             <>
               {isFetching && songSuggestions.length === 0 && (
                 <div className="py-[5px] text-term-faint">searching…</div>
@@ -400,16 +363,13 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
   }
 
   if (screen === "results") {
-    // Which sources actually answered, so a narrowed search is visible here
-    // now that the header carries no indicator.
+    // Which sources actually answered. A tab is only as trustworthy as where it
+    // came from, so the reader gets to see that without opening anything.
     const sourcesUsed = [...new Set(filteredResults.map((r) => r.provider))];
     return (
       <main className="mx-auto max-w-[900px] px-[22px] pb-20 pt-[34px]">
-        <div className="text-term-dim">
-          <span className="text-term-accent">$</span> find “{term}”
-          {provider ? ` --src ${provider}` : ""}
-        </div>
-        <div className="text-[11px] text-term-faint">
+        <CommandLine display>find “{term}”</CommandLine>
+        <div className="mt-2 text-[11px] text-term-faint">
           {isFetching && filteredResults.length === 0
             ? "querying sources…"
             : `${filteredResults.length} results · sources: ${sourcesUsed.join(", ") || "none"}`}
@@ -419,7 +379,7 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
             warn: {d.provider} unavailable — partial results
           </div>
         ))}
-        <div className="mb-5" aria-hidden />
+        <div className="mb-6" aria-hidden />
 
         {filteredResults.map((r, i) => (
           <Link
@@ -470,13 +430,11 @@ export function TerminalApp({ providers = [], quote }: { providers?: string[]; q
   // favs
   return (
     <main className="mx-auto max-w-[900px] px-[22px] pb-20 pt-[34px]">
-      <div className="text-term-dim">
-        <span className="text-term-accent">$</span> fav --list
-      </div>
-      <div className="text-[11px] text-term-faint">
+      <CommandLine display>fav --list</CommandLine>
+      <div className="mt-2 text-[11px] text-term-faint">
         {favs.length} favorited · local to this session
       </div>
-      <div className="mb-5" aria-hidden />
+      <div className="mb-6" aria-hidden />
 
       {favs.map((f, i) => (
         <div
@@ -528,9 +486,16 @@ function DailyQuote({ quote }: { quote: Quote }) {
       <div className="text-[11px] text-term-faint">
         <span className="text-term-accent">$</span> fortune
       </div>
-      <blockquote className="mt-2.5 border-term-accent border-l-2 pl-3.5">
-        <p className="text-[14px] leading-[1.6]">“{quote.text}”</p>
-        <footer className="mt-1.5 text-[11px] text-term-faint">— {quote.author}</footer>
+      {/* The accent carries the quotation marks rather than a rule down the
+          side; the prompt above owns the loud move on this screen and the
+          fortune should read like something worth stopping for, not an alert. */}
+      <blockquote className="mt-3 max-w-[68ch]">
+        <p className="text-[16px] text-term-fg leading-[1.55]">
+          <span className="text-term-accent">“</span>
+          {quote.text}
+          <span className="text-term-accent">”</span>
+        </p>
+        <footer className="mt-2 text-[11px] text-term-faint">— {quote.author}</footer>
       </blockquote>
     </div>
   );
@@ -548,7 +513,7 @@ function SuggestionRow(props: {
     <button
       type="button"
       onClick={props.onPick}
-      className={`flex w-full items-baseline gap-3 py-[5px] text-left ${props.on ? "text-term-fg" : "text-term-dim"}`}
+      className={`flex w-full items-baseline gap-3 py-[7px] pl-1 text-left ${props.on ? "tt-selected text-term-fg" : "text-term-dim hover:text-term-fg"}`}
     >
       <span className="w-3.5 flex-none text-term-accent">{props.on ? "›" : " "}</span>
       <span className="w-[26px] flex-none text-[11px] text-term-faint">

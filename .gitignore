@@ -49,3 +49,11 @@ next-env.d.ts
 
 # copied from node_modules at build time
 /public/models/
+
+# impeccable design tooling — transient state only. .impeccable/config.json is
+# meant to be shared and stays tracked if it ever gets written.
+/.impeccable/questions/
+/.impeccable/mocks/
+/.impeccable/review/
+/.impeccable/hook.cache.json
+/.impeccable/config.local.json

@@ -74,16 +74,23 @@ src/
 `esc` back · `⌘K` palette · on a tab: `space` play · `f` focus · `a` autoscroll ·
 `s` favorite · `t` theme (anywhere).
 
-Slash commands: `/tab`, `/artist`, `/new`, `/listen`, `/random`, `/src`, `/fav`,
-`/auth`, `/man`, `/theme`.
+Slash commands: `/tab`, `/artist`, `/new`, `/random`, `/fav`, `/auth`, `/man`,
+`/theme`.
 
 **The grid.** Every notation position is two characters wide, so `0-`, `12` and
 `--` all measure the same and a reader can count positions straight down a
 column. One character per position — the usual convention — breaks above the
 ninth fret: a two-digit fret either pushes everything after it out of line or
 silently swallows the next time position. `normaliseGrid` in
-`src/lib/tab/grid.ts` re-lays hand-written tab onto the grid and is idempotent;
-`scripts/normalise-seeds.ts` runs it over the shipped library.
+`src/lib/tab/grid.ts` re-lays tab that arrives ragged onto the grid and is
+idempotent; `scripts/normalise-seeds.ts` runs it over the shipped library.
+
+**The editor edits cells, not characters.** `/new` draws each position as a
+button you click and type a fret into (`tab-grid.tsx`, over the cell model in
+`src/lib/tab/cells.ts`). Because a fret replaces a fixed-width cell rather than
+being inserted into a line, a two-digit fret cannot push the strings below it out
+of column — the alignment problem is gone by construction rather than corrected
+after the fact. There is no raw text box.
 
 **Guitar tablature only.** `tabTypeSchema` has a single member: no chord sheets,
 no bass, no ukulele. It stays an enum so one of those can come back as an added
@@ -94,16 +101,15 @@ UI — and since a single value says nothing, it is not displayed anywhere.
 `src/components/terminal/completion.ts` as pure functions. `/art` + Tab finishes
 the command; a command that takes an argument completes with a trailing space so
 the next Tab moves on to completing that argument. Repeated Tabs cycle the
-candidates, Shift+Tab walks back. Arguments complete for `/src` (source ids) and
-for the search commands (titles currently on screen).
+candidates, Shift+Tab walks back. Arguments complete for the search commands
+(titles currently on screen).
 
-**`/src <name>`** restricts search to one source; `all` clears it. The choice
-lives in `src/stores/prefs.ts` and is deliberately session-only — there is no
-indicator in the header, so a filter that survived a reload would silently haunt
-the reader. While it is active the results header says `$ find "…" --src local`.
-It travels as `?provider=` on `/api/search`, and the registry can only *narrow*
-`TAB_PROVIDERS` with it — a client must never be able to switch on a source the
-operator turned off.
+**Which sources are searched is the operator's decision**, made once in
+`TAB_PROVIDERS`. There is no reader-facing filter: `/api/search` still accepts
+`?provider=`, and the registry can only *narrow* `TAB_PROVIDERS` with it — a
+client must never be able to switch on a source the operator turned off — but
+nothing in the UI sets it, so every search asks the same question. The results
+header names the sources that actually answered.
 
 **`/random`** draws a tab from the sources that can enumerate their own catalog.
 That is an optional `random()` on `TabProvider`: a search-only upstream like
