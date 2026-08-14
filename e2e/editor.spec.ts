@@ -54,7 +54,6 @@ async function openWith(page: Page, tab: string) {
               type: "tab",
               tuning: ["E", "A", "D", "G", "B", "E"],
               capo: 0,
-              difficulty: null,
               content: text,
               published: false,
               updatedAt: 1,
@@ -106,6 +105,23 @@ test("the editor opens with nothing to click and says so", async ({ page }) => {
   await expect(page.getByText(/nothing here yet/i)).toBeVisible();
   // No text box: the grid is the only way in.
   await expect(page.locator("textarea")).toHaveCount(0);
+});
+
+test("the editor asks for a title, an artist, a tuning and a capo — and no more", async ({
+  page,
+}) => {
+  await page.goto("/new");
+
+  await expect(page.getByLabel("title")).toBeVisible();
+  await expect(page.getByLabel("artist")).toBeVisible();
+  await expect(page.getByLabel("tuning")).toBeVisible();
+  await expect(page.getByLabel("capo")).toBeVisible();
+
+  // Difficulty is gone: it was a judgement nobody was asking for about a tab
+  // only its own author reads.
+  await expect(page.getByText("level", { exact: true })).toHaveCount(0);
+  // And the artist placeholder names the field rather than proposing a value.
+  await expect(page.getByLabel("artist")).toHaveAttribute("placeholder", "artist");
 });
 
 test("the stave helper inserts a square grid", async ({ page }) => {

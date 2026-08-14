@@ -116,12 +116,15 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
             placeholder="Greensleeves"
             className="tt-display w-full border-0 bg-transparent p-0 caret-term-accent outline-none placeholder:text-term-faint"
           />
+          {/* The placeholder names the field rather than suggesting a value —
+              this input carries no visible label, so with none at all the line
+              would read as blank space. */}
           <input
             id="tab-artist"
             aria-label="artist"
             value={draft.artist}
             onChange={(e) => patch({ artist: e.target.value })}
-            placeholder="Traditional"
+            placeholder="artist"
             className="mt-1 w-full border-0 bg-transparent p-0 text-[15px] text-term-dim caret-term-accent outline-none placeholder:text-term-faint"
           />
         </div>
@@ -151,21 +154,6 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
               onChange={(e) => patch({ capo: Number(e.target.value) })}
               className="w-full border-0 bg-transparent text-[13px] caret-term-accent outline-none"
             />
-          </Field>
-          <Field label="level" htmlFor="tab-level">
-            <select
-              id="tab-level"
-              value={draft.difficulty ?? ""}
-              onChange={(e) =>
-                patch({ difficulty: (e.target.value || null) as Draft["difficulty"] })
-              }
-              className="w-full border-0 bg-transparent text-[13px] outline-none"
-            >
-              <option value="">—</option>
-              <option value="beginner">beginner</option>
-              <option value="intermediate">intermediate</option>
-              <option value="advanced">advanced</option>
-            </select>
           </Field>
           <TranscribeControls
             tuning={draft.tuning}

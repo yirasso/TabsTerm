@@ -66,7 +66,6 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
   const metaBits = [
     tab.tuning ? `tuning ${tab.tuning.join(" ")}` : null,
     tab.capo !== null ? (tab.capo === 0 ? "capo none" : `capo fret ${tab.capo}`) : null,
-    tab.difficulty,
   ].filter((m): m is string => Boolean(m));
 
   return (

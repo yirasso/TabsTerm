@@ -48,7 +48,6 @@ export const tabSchema = songSummarySchema.extend({
   content: z.string().nullable().default(null),
   tuning: z.array(z.string()).nullable().default(null),
   capo: z.number().int().min(0).max(12).nullable().default(null),
-  difficulty: z.enum(["beginner", "intermediate", "advanced"]).nullable().default(null),
   /**
    * SPDX-ish licence string. Nothing sets it today; it stays because shipped
    * example tablature is public-domain content the product carries on purpose,

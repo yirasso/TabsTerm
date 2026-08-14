@@ -18,7 +18,6 @@ export type Draft = {
   type: TabType;
   tuning: string[] | null;
   capo: number | null;
-  difficulty: "beginner" | "intermediate" | "advanced" | null;
   content: string;
   /** Set once the writer says it is ready; drafts stay out of search. */
   published: boolean;
@@ -35,7 +34,6 @@ export function emptyDraft(id: string): Draft {
     type: "tab",
     tuning: ["E", "A", "D", "G", "B", "E"],
     capo: 0,
-    difficulty: null,
     content: "",
     published: false,
     updatedAt: 0,
@@ -56,7 +54,6 @@ export function draftToTab(draft: Draft): Tab {
     content: draft.content,
     tuning: draft.tuning,
     capo: draft.capo,
-    difficulty: draft.difficulty,
     license: null,
   };
 }

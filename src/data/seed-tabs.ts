@@ -14,7 +14,6 @@ export type SeedTab = {
   type: "tab";
   tuning: string[] | null;
   capo: number | null;
-  difficulty: "beginner" | "intermediate" | "advanced" | null;
   content: string;
 };
 
@@ -30,7 +29,6 @@ export const seedTabs: SeedTab[] = [
     type: "tab",
     tuning: STANDARD,
     capo: 0,
-    difficulty: "beginner",
     content: `[Intro]
 e|----------------------------------|----------------------------------|
 B|----------0-----------------------|----------3-----------------------|
@@ -55,7 +53,6 @@ E|----------------------------------|----------------------------------|`,
     type: "tab",
     tuning: STANDARD,
     capo: 0,
-    difficulty: "beginner",
     content: `[Chord shapes behind the pattern]
 Am     C      D      F      E
 x02210 x32010 xx0232 133211 022100
@@ -76,7 +73,6 @@ E|----------------------------------|----------------------------------|`,
     type: "tab",
     tuning: STANDARD,
     capo: 7,
-    difficulty: "intermediate",
     content: `[Capo 7 — play in Am shapes, sounds in Em]
 
 [Intro]
@@ -103,7 +99,6 @@ E|----------------------------------|--3-------------------------------|`,
     type: "tab",
     tuning: STANDARD,
     capo: 0,
-    difficulty: "beginner",
     content: `[Melody]
 e|----------------------------------|----------------------------------|
 B|--0---0---1---3---3---1---0-------|------0---0---1---3---3---1---0---|
@@ -127,7 +122,6 @@ E|----------------------------------|----------------------------------|`,
     type: "tab",
     tuning: STANDARD,
     capo: 0,
-    difficulty: "beginner",
     content: `[The eight-chord loop, arpeggiated]
 e|----------------------------------|----------------------------------|
 B|--------------3-----------3-------|--------------2-----------2-------|
