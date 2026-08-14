@@ -20,7 +20,7 @@ npm run check     # typecheck + biome + vitest
   A new source is a new file in `providers/` plus an entry in `TAB_PROVIDERS`.
 - **`src/lib/tabs/contract.ts` must stay safe to run in a browser.** It is the
   shared contract, imported as *values* by client code (response parsing, the drafts
-  store, the badge labels). The registry and the providers are marked `server-only`
+  store). The registry and the providers are marked `server-only`
   and import it; never the reverse. Putting a database client, a secret, or a node
   builtin behind that import is what the `server-only` marks exist to catch.
 - **ASCII tablature is a fixed-width grid.** `.tab-content` must keep `white-space: pre`
@@ -53,9 +53,12 @@ npm run check     # typecheck + biome + vitest
   `provider` query param is a client-supplied filter; treating it as a way to enable a
   source would let anyone switch on what the operator turned off. There is an e2e test
   pinning this.
-- **Capability is decided in one place**, `deriveCapability` in `src/lib/tabs/contract.ts`.
-  It asks the parser whether it found notes, so `full` cannot promise sound the player
-  cannot deliver.
+- **Whether a tab plays is asked, never stored.** `isPlayable` in
+  `src/lib/tab/parse-notes.ts` asks the parser whether it found notes, and the playback
+  bar is the only thing that reports it. A stored `capability` field used to duplicate
+  this and was removed: with the grid as the only way in, everything has a stave, so the
+  badge said the same thing on every tab and its `link` value was reachable only for an
+  empty tab — where it claimed the tab opened on another site.
 - **Guitar tablature only.** No chord sheets, bass or ukulele. `tabTypeSchema` keeps a
   single member so one can come back cheaply, but nothing displays it.
 - **Audio analysis is one path, and it produces tabs.** `transcribeAudio`

@@ -2,7 +2,6 @@
 import "server-only";
 import { seedTabs } from "@/data/seed-tabs";
 import {
-  deriveCapability,
   type SongSummary,
   songSummarySchema,
   type Tab,
@@ -11,17 +10,7 @@ import {
 } from "@/lib/tabs/contract";
 import { slugify } from "@/lib/utils";
 
-const tabs: Tab[] = seedTabs.map((t) =>
-  tabSchema.parse({
-    ...t,
-    provider: "local",
-    capability: deriveCapability({
-      content: t.content,
-      externalOnly: false,
-      tuning: t.tuning,
-    }),
-  }),
-);
+const tabs: Tab[] = seedTabs.map((t) => tabSchema.parse({ ...t, provider: "local" }));
 
 function score(tab: Tab, query: string) {
   const q = slugify(query);

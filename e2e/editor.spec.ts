@@ -94,8 +94,8 @@ test("a ragged tab can be squared up, published, and then found", async ({ page 
   await page.getByRole("button", { name: "publish" }).click();
   await expect(page).toHaveURL(/\/draft\/[a-z0-9]+/);
   await expect(page.getByRole("heading", { name: "Test Riff" })).toBeVisible();
-  // A stave means the player has notes, so the badge must say so.
-  await expect(page.getByTitle("tab + audio")).toBeVisible();
+  // A stave means the player has notes, so the bar must offer to play them.
+  await expect(page.getByRole("button", { name: "▶ play" })).toBeVisible();
 
   await page.goto("/?q=test+riff");
   await expect(page.getByRole("button", { name: /Test Riff/ })).toBeVisible();

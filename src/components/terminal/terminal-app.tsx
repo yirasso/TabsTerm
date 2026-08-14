@@ -7,11 +7,10 @@ import { useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CommandLine } from "@/components/chrome/command-line";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
-import { CapabilityBadge } from "@/components/tab/capability-badge";
 import type { Quote } from "@/data/quotes";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useSongSearch } from "@/hooks/use-song-search";
-import { CAPABILITY_LABEL, type SongSummary } from "@/lib/tabs/contract";
+import type { SongSummary } from "@/lib/tabs/contract";
 import { slugify } from "@/lib/utils";
 import { DRAFT_PROVIDER, draftToSummary, useDrafts } from "@/stores/drafts";
 import { useSession } from "@/stores/session";
@@ -321,7 +320,7 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
                 idx={i}
                 title={s.title}
                 sub={`· ${s.artist}`}
-                tag={`${CAPABILITY_LABEL[s.capability]} · ${s.provider}`}
+                tag=""
                 onPick={() => openSong(s, "home")}
               />
             ))}
@@ -358,16 +357,13 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
     );
   }
 
-  // Which sources actually answered. A tab is only as trustworthy as where it
-  // came from, so the reader gets to see that without opening anything.
-  const sourcesUsed = [...new Set(filteredResults.map((r) => r.provider))];
   return (
     <main className="mx-auto max-w-[900px] px-[22px] pb-20 pt-[34px]">
       <CommandLine display>{listing ? "list --all" : `find “${term}”`}</CommandLine>
       <div className="mt-2 text-[11px] text-term-faint">
         {isFetching && filteredResults.length === 0
           ? "reading the library…"
-          : `${filteredResults.length} ${listing ? "tabs" : "results"} · sources: ${sourcesUsed.join(", ") || "none"}`}
+          : `${filteredResults.length} ${listing ? "tabs" : "results"}`}
       </div>
       {degraded.map((d) => (
         <div key={d.provider} className="text-[11px] text-term-accent">
@@ -380,18 +376,12 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
         <Link
           key={`${r.provider}:${r.id}`}
           href={songHref(r, "results")}
-          className={`grid grid-cols-[22px_1fr_70px_100px] items-baseline gap-3.5 border-b border-term-line py-2 pl-1 pr-2 text-term-fg ${i === sel ? "tt-selected" : ""}`}
+          className={`grid grid-cols-[22px_1fr] items-baseline gap-3.5 border-b border-term-line py-2 pl-1 pr-2 text-term-fg ${i === sel ? "tt-selected" : ""}`}
         >
           <span className="text-term-accent">{i === sel ? "›" : " "}</span>
           <span>
             <span className="font-medium">{r.title}</span>{" "}
             <span className="text-term-dim">· {r.artist}</span>
-          </span>
-          <span className="text-[12px]">
-            <CapabilityBadge capability={r.capability} />
-          </span>
-          <span className="whitespace-nowrap text-right text-[11px] text-term-faint">
-            {r.provider}
           </span>
         </Link>
       ))}

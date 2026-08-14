@@ -8,7 +8,6 @@ import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
 import { useTabPlayback } from "@/hooks/use-tab-playback";
 import type { Tab } from "@/lib/tabs/contract";
 import { anyModalOpen } from "@/stores/ui";
-import { CapabilityBadge } from "./capability-badge";
 import { PlaybackBar } from "./playback-bar";
 import { TabRender } from "./tab-render";
 
@@ -62,11 +61,12 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // How to play it, and nothing about where it came from: every tab here is the
+  // reader's own.
   const metaBits = [
     tab.tuning ? `tuning ${tab.tuning.join(" ")}` : null,
     tab.capo !== null ? (tab.capo === 0 ? "capo none" : `capo fret ${tab.capo}`) : null,
     tab.difficulty,
-    tab.provider,
   ].filter((m): m is string => Boolean(m));
 
   return (
@@ -87,7 +87,6 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
           <span className="text-[15px] text-term-dim">· {tab.artist}</span>
           <span className="flex-1" />
           <span className="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-[11px] text-term-faint">
-            <CapabilityBadge capability={tab.capability} detailed />
             {metaBits.map((m) => (
               <span key={m} className="flex-none whitespace-nowrap">
                 {m}
@@ -96,12 +95,8 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
           </span>
         </div>
 
-        {!focusMode && (
-          <div className="mb-[26px] text-[11px] text-term-faint">
-            {tab.attributionName ? `transcribed by ${tab.attributionName} · ` : ""}
-            source: {tab.provider}
-            {tab.license ? ` · ${tab.license}` : ""}
-          </div>
+        {!focusMode && tab.license && (
+          <div className="mb-[26px] text-[11px] text-term-faint">{tab.license}</div>
         )}
 
         {parsed.blocks.length > 0 ? (

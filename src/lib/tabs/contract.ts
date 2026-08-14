@@ -3,21 +3,20 @@
  *
  * This lives in `lib/` rather than `server/` because the client genuinely needs
  * it as *values*, not just types — `use-song-search` parses responses through
- * `searchResponseSchema`, the drafts store calls `deriveCapability`, and the
- * badge reads the label maps. It used to sit in `src/server/tabs/types.ts`,
- * which meant four client modules were importing from a server folder and
- * getting away with it only because nothing in that file reached for the
- * server. The day it did — a database client, a secret, `node:fs` — the build
- * would have broken somewhere that gave no hint why.
+ * `searchResponseSchema`, and the drafts store builds a `Tab` from a draft. It
+ * used to sit in `src/server/tabs/types.ts`, which meant client modules were
+ * importing from a server folder and getting away with it only because nothing
+ * in that file reached for the server. The day it did — a database client, a
+ * secret, `node:fs` — the build would have broken somewhere that gave no hint
+ * why.
  *
  * So the rule is the file's location, not a comment: everything here must be
- * safe to run in a browser. It imports zod and one pure parser and nothing else.
- * Server-side machinery (the provider registry, the providers themselves) is
- * marked `server-only` and imports this, never the other way around.
+ * safe to run in a browser. Server-side machinery (the provider registry, the
+ * providers themselves) is marked `server-only` and imports this, never the
+ * other way around.
  */
 
 import { z } from "zod";
-import { isPlayable } from "@/lib/tab/parse-notes";
 
 /**
  * Guitar tablature and nothing else, for now. Kept as an enum rather than
@@ -28,20 +27,6 @@ import { isPlayable } from "@/lib/tab/parse-notes";
  */
 export const tabTypeSchema = z.enum(["tab"]);
 export type TabType = z.infer<typeof tabTypeSchema>;
-
-/**
- * What a result actually gives the reader, so the UI can say so up front:
- *
- * - `full` — has a stave we can turn into notes, so it plays back.
- * - `text` — readable, but nothing we can play (a chord sheet, say).
- * - `link` — reserved: reading it would mean leaving for another site. Nothing
- *   emits this today, since every source is one we host.
- *
- * This is a promise to the user, not a description of the source, which is why
- * it rides on the summary rather than being derived in a component.
- */
-export const tabCapabilitySchema = z.enum(["full", "text", "link"]);
-export type TabCapability = z.infer<typeof tabCapabilitySchema>;
 
 /** What a search result row carries. Cheap to fetch, safe to list. */
 export const songSummarySchema = z.object({
@@ -55,9 +40,6 @@ export const songSummarySchema = z.object({
   /** 0–5, when the source exposes one. */
   rating: z.number().min(0).max(5).nullable().default(null),
   votes: z.number().int().nonnegative().nullable().default(null),
-  /** Canonical page on the source, for attribution. */
-  sourceUrl: z.string().url().nullable().default(null),
-  capability: tabCapabilitySchema.default("link"),
 });
 export type SongSummary = z.infer<typeof songSummarySchema>;
 
@@ -67,12 +49,13 @@ export const tabSchema = songSummarySchema.extend({
   tuning: z.array(z.string()).nullable().default(null),
   capo: z.number().int().min(0).max(12).nullable().default(null),
   difficulty: z.enum(["beginner", "intermediate", "advanced"]).nullable().default(null),
-  /** Set when the source can only be viewed off-site (embed/player-only tabs). */
-  externalOnly: z.boolean().default(false),
-  /** SPDX-ish licence string, required for anything imported from a corpus. */
+  /**
+   * SPDX-ish licence string. Nothing sets it today; it stays because shipped
+   * example tablature is public-domain content the product carries on purpose,
+   * and provenance for that is a standing commitment in PRODUCT.md rather than
+   * catalogue plumbing.
+   */
   license: z.string().nullable().default(null),
-  /** Who to credit — a contributor's handle, or a corpus's required attribution. */
-  attributionName: z.string().nullable().default(null),
 });
 export type Tab = z.infer<typeof tabSchema>;
 
@@ -118,33 +101,3 @@ export interface TabProvider {
 export function songKey(song: Pick<SongSummary, "provider" | "id">) {
   return `${song.provider}:${song.id}`;
 }
-
-/**
- * The single place capability is decided. Providers call this rather than
- * hard-coding a value.
- *
- * `full` means we found a stave we can turn into notes — which is exactly the
- * condition the player needs, so the badge can never promise sound the player
- * cannot deliver.
- */
-export function deriveCapability(
-  tab: Pick<Tab, "content" | "externalOnly"> & { tuning?: string[] | null },
-): TabCapability {
-  if (tab.externalOnly) return "link";
-  if (!tab.content) return "link";
-  return isPlayable(tab.content, tab.tuning ?? null) ? "full" : "text";
-}
-
-/** Short label for the badge, in the terminal's lowercase register. */
-export const CAPABILITY_LABEL: Record<TabCapability, string> = {
-  full: "audio",
-  text: "text",
-  link: "link",
-};
-
-/** Sentence shown on the tab page, where there is room to be explicit. */
-export const CAPABILITY_DETAIL: Record<TabCapability, string> = {
-  full: "tab + audio",
-  text: "tab, no audio",
-  link: "opens on source",
-};

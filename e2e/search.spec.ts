@@ -50,14 +50,26 @@ test("an unknown song reports no match", async ({ page }) => {
   await expect(page.getByText(/no match in index/i)).toBeVisible();
 });
 
-test("results and the tab page say what the reader gets", async ({ page }) => {
+test("a result row opens the tab it names", async ({ page }) => {
   await page.goto("/?q=greensleeves&view=results");
 
-  const row = page.getByRole("link", { name: /Greensleeves/i }).first();
-  await expect(row).toContainText("audio");
+  await page
+    .getByRole("link", { name: /Greensleeves/i })
+    .first()
+    .click();
+  await expect(page.getByRole("heading", { name: "Greensleeves" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "▶ play" })).toBeVisible();
+});
 
-  await row.click();
-  await expect(page.getByTitle("tab + audio")).toBeVisible();
+test("a tab page says nothing about where the tab came from", async ({ page }) => {
+  await page.goto("/song/local/greensleeves");
+
+  // Every tab is the reader's own, so authorship and source are noise. What is
+  // left is how to play it.
+  await expect(page.getByText(/source:/i)).toHaveCount(0);
+  await expect(page.getByText(/transcribed by/i)).toHaveCount(0);
+  await expect(page.getByText(/tab \+ audio/i)).toHaveCount(0);
+  await expect(page.getByText(/tuning E A D G B E/)).toBeVisible();
 });
 
 test("every tab in the library is playable", async ({ page }) => {
@@ -65,7 +77,6 @@ test("every tab in the library is playable", async ({ page }) => {
   // branch. If one does, either the tab is broken or the parser is.
   for (const id of ["greensleeves", "scarborough-fair", "ode-to-joy", "canon-in-d"]) {
     await page.goto(`/song/local/${id}`);
-    await expect(page.getByTitle("tab + audio")).toBeVisible();
     await expect(page.getByRole("button", { name: "▶ play" })).toBeVisible();
   }
 });
@@ -125,9 +136,6 @@ test("every stave line ends in the same place", async ({ page }) => {
 test("the digital guitar plays a tab and walks a cursor across it", async ({ page }) => {
   await page.goto("/song/local/greensleeves");
 
-  // The badge must not promise sound the player cannot deliver.
-  await expect(page.getByTitle("tab + audio")).toBeVisible();
-
   const play = page.getByRole("button", { name: "▶ play" });
   await play.click();
 
@@ -175,7 +183,7 @@ test("the prompt no longer offers the commands that were removed", async ({ page
 
   await prompt.fill("greensleeves");
   await prompt.press("Enter");
-  await expect(page.getByText(/results ·/)).toBeVisible();
+  await expect(page.getByText(/\d+ results/)).toBeVisible();
 });
 
 test("the prompt no longer offers a source filter", async ({ page }) => {
@@ -192,13 +200,15 @@ test("the prompt no longer offers a source filter", async ({ page }) => {
   await expect(page).toHaveURL(/^[^?]*\/(\?.*)?$/);
 });
 
-test("the results header still says which sources answered", async ({ page }) => {
+test("the results header counts what came back, and names no source", async ({ page }) => {
   await page.goto("/");
   const prompt = page.getByLabel("search for a song");
 
   await prompt.fill("greensleeves");
   await prompt.press("Enter");
-  await expect(page.getByText(/sources: local/)).toBeVisible();
+
+  await expect(page.getByText(/\d+ results/)).toBeVisible();
+  await expect(page.getByText(/sources:/)).toHaveCount(0);
 });
 
 test("a client cannot switch on a source the server disabled", async ({ request }) => {
@@ -230,7 +240,7 @@ test("/list shows the whole library on the results screen", async ({ page }) => 
   await prompt.press("Enter");
 
   await expect(page.getByText("list --all")).toBeVisible();
-  await expect(page.getByText(/\d+ tabs · sources: local/)).toBeVisible();
+  await expect(page.getByText(/\d+ tabs/)).toBeVisible();
 
   // Every shipped tab, not the handful a query would have matched.
   for (const title of ["Greensleeves", "Scarborough Fair", "Ode to Joy"]) {
@@ -296,7 +306,7 @@ test("the header carries no source chip", async ({ page }) => {
 
 test("the wordmark goes home, and drops whatever was being searched", async ({ page }) => {
   await page.goto("/?q=greensleeves&view=results");
-  await expect(page.getByText(/results ·/)).toBeVisible();
+  await expect(page.getByText(/\d+ results/)).toBeVisible();
 
   await page.getByRole("link", { name: "tabsterm" }).click();
 

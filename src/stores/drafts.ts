@@ -3,7 +3,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { SongSummary, Tab, TabType } from "@/lib/tabs/contract";
-import { deriveCapability } from "@/lib/tabs/contract";
 
 /**
  * Tabs written in the browser, before there is a database to put them in.
@@ -54,19 +53,11 @@ export function draftToTab(draft: Draft): Tab {
     type: draft.type,
     rating: null,
     votes: null,
-    sourceUrl: null,
-    capability: deriveCapability({
-      content: draft.content,
-      externalOnly: false,
-      tuning: draft.tuning,
-    }),
     content: draft.content,
     tuning: draft.tuning,
     capo: draft.capo,
     difficulty: draft.difficulty,
-    externalOnly: false,
     license: null,
-    attributionName: null,
   };
 }
 
