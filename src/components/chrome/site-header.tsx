@@ -6,29 +6,16 @@ import { useSession } from "@/stores/session";
 import { useUi } from "@/stores/ui";
 import { AboutModal } from "./about-modal";
 import { AuthModal } from "./auth-modal";
-import { Palette } from "./palette";
 import { useThemeCycle } from "./use-theme-cycle";
 
 export function SiteHeader() {
-  const { aboutOpen, authOpen, paletteOpen, openAuth, togglePalette } = useUi();
+  const { aboutOpen, authOpen, openAuth } = useUi();
   const user = useSession((s) => s.user);
   const { theme, cycle } = useThemeCycle();
 
   // next-themes only knows the real theme after mount.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-
-  // ⌘K works everywhere, including inside inputs.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        togglePalette();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [togglePalette]);
 
   return (
     <>
@@ -64,7 +51,6 @@ export function SiteHeader() {
       </header>
       {aboutOpen && <AboutModal />}
       {authOpen && <AuthModal />}
-      {paletteOpen && <Palette />}
     </>
   );
 }

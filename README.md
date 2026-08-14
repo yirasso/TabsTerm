@@ -4,8 +4,8 @@ Search a song, get its guitar tablature. Terminal-flavoured, no popups, no ad wa
 
 The UI implements the **TabsTerm** design from Claude Design (project
 "TabsTerm – Plataforma de tabs", `TabsTerm.dc.html`): a text prompt with ghost-typing,
-four themes (paper / crt / amber / mono) with CRT scanlines, slash commands, a ⌘K
-palette, keyboard-first navigation, and a tab view with a playback bar
+four themes (paper / crt / amber / mono) with CRT scanlines, slash commands,
+keyboard-first navigation, and a tab view with a playback bar
 (play / bpm / autoscroll / focus).
 
 ## Stack
@@ -23,7 +23,6 @@ palette, keyboard-first navigation, and a tab view with a playback bar
 | Client state  | Zustand                                       | Mock account, modal state, and local drafts |
 | Motion        | Motion (Framer) + GSAP + Lenis                | Layout/gesture animation, timelines, smooth scroll |
 | 3D            | three + React Three Fiber + drei + postprocessing | Ready for an awwwards-grade WebGL layer |
-| Command UI    | cmdk                                          | For a ⌘K palette over the search |
 | Lint / format | Biome                                         | One fast binary instead of ESLint + Prettier |
 | Unit tests    | Vitest + Testing Library                      | |
 | E2E           | Playwright                                    | |
@@ -53,7 +52,7 @@ src/
     api/tab/[provider]/[id]/route.ts
     globals.css                     theme tokens (--tt-*) + term-* utilities
   components/
-    chrome/                         header, about/auth modals, ⌘K palette, theme cycle
+    chrome/                         header, about/auth modals, theme cycle
     terminal/                       prompt, ghost typer, slash commands, screens
     tab/                            tab view, playback bar, section parser
   stores/                           zustand: session (mock user) + ui + drafts
@@ -71,7 +70,7 @@ src/
 ### Keyboard
 
 `enter` run · `tab` complete (`shift+tab` backwards) · `↑ ↓` / `j k` move ·
-`esc` back · `⌘K` palette · on a tab: `space` play · `f` focus · `a` autoscroll ·
+`esc` back · on a tab: `space` play · `f` focus · `a` autoscroll ·
 `t` theme (anywhere).
 
 Slash commands: `/new`, `/random`, `/man`, `/theme`. None takes an argument —
@@ -134,6 +133,7 @@ UI says so, instead of the whole search failing.
 - **`local`** — tablature committed to the repo (`src/data/seed-tabs.ts`). Always
   available, works offline, and is what the tests run against. Currently five
   traditional / public-domain pieces.
+
 `local` is the only provider today. A Songsterr one existed and was removed; the
 fan-out and `degraded` machinery is what survives of it, and it is not worth
 adding to. See [docs/PLAN.md](docs/PLAN.md) — the product is a private workshop

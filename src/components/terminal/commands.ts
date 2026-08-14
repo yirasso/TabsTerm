@@ -9,7 +9,7 @@ export type Command = { name: string; hint: string };
 export const LEAVES_PROMPT = new Set(["/random", "/new"]);
 
 /**
- * Slash commands surfaced in the prompt and the ⌘K palette.
+ * Slash commands, surfaced under the prompt as you type one.
  *
  * None of them takes an argument any more. Searching is what the prompt does
  * when you simply type — `/tab <song>` was a longer way to say the same thing,

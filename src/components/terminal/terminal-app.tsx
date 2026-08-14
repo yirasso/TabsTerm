@@ -46,7 +46,6 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
   const cycleRef = useRef<CycleState>(null);
 
   const { openAbout } = useUi();
-  const promptFocusTick = useUi((s) => s.promptFocusTick);
   const user = useSession((s) => s.user);
   const { cycle } = useThemeCycle();
 
@@ -140,12 +139,12 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
     setSelMoved(false);
   };
 
-  // Focus the prompt on home, and again whenever something asks for it.
+  // Focus the prompt whenever the home screen comes up.
   useEffect(() => {
     if (screen !== "home") return;
     const t = setTimeout(() => inputRef.current?.focus(), 60);
     return () => clearTimeout(t);
-  }, [screen, promptFocusTick]);
+  }, [screen]);
 
   // Keep the selection inside the current list.
   useEffect(() => {
@@ -330,9 +329,6 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
           </span>
           <span className="flex-none whitespace-nowrap">
             <span className="text-term-dim">/</span> · commands
-          </span>
-          <span className="flex-none whitespace-nowrap">
-            <span className="text-term-dim">⌘K</span> · palette
           </span>
         </div>
       </main>

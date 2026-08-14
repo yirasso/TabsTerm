@@ -112,7 +112,7 @@ provenance — not user tabs.
 
 The UI implements the TabsTerm design imported from Claude Design ("TabsTerm –
 Plataforma de tabs", `TabsTerm.dc.html`): terminal prompt with ghost-typing, results
-screen, tab view with playback bar, about/auth/⌘K modals, keyboard-first.
+screen, tab view with playback bar, about/auth modals, keyboard-first.
 
 What is still fake and scheduled to become real (see the plan): the auth modal is a
 client-side mock and tabs live in localStorage rather than an account. The library is
