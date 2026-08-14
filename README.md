@@ -6,7 +6,7 @@ The UI implements the **TabsTerm** design from Claude Design (project
 "TabsTerm – Plataforma de tabs", `TabsTerm.dc.html`): a text prompt with ghost-typing,
 four themes (paper / crt / amber / mono) with CRT scanlines, slash commands,
 keyboard-first navigation, and a tab view with a playback bar
-(play / bpm / autoscroll / focus).
+(play / bpm / focus).
 
 ## Stack
 
@@ -71,19 +71,26 @@ src/
 ### Keyboard
 
 `enter` run · `tab` complete (`shift+tab` backwards) · `↑ ↓` / `j k` move ·
-`esc` back · on a tab: `space` play · `f` focus · `a` autoscroll ·
+`esc` back · on a tab: `space` play · `f` focus ·
 `t` theme (anywhere).
 
 Slash commands: `/new`, `/list`, `/rand`, `/man`, `/theme`. None takes an argument —
 typing anything that is not a command searches.
 
-**The grid.** Every notation position is two characters wide, so `0-`, `12` and
-`--` all measure the same and a reader can count positions straight down a
+**The grid.** Every notation position is `CELL_WIDTH` characters wide (3), so `0--`, `12-` and
+`---` all measure the same and a reader can count positions straight down a
 column. One character per position — the usual convention — breaks above the
 ninth fret: a two-digit fret either pushes everything after it out of line or
-silently swallows the next time position. `normaliseGrid` in
-`src/lib/tab/grid.ts` re-lays tab that arrives ragged onto the grid and is
-idempotent; `scripts/normalise-seeds.ts` runs it over the shipped library.
+silently swallows the next time position. Two characters is enough to fix that,
+but leaves a `12` touching the next one; the third keeps a dash after every fret.
+
+`normaliseGrid` in `src/lib/tab/grid.ts` re-lays ragged tab onto the grid and is
+idempotent. `regrid` is its dangerous sibling, for content written at a *known
+different* width — changing `CELL_WIDTH` needs it for the shipped library
+(`node scripts/normalise-seeds.ts --from 2`) and for drafts already in a browser
+(a persist `version` bump in `src/stores/drafts.ts`). Reaching for `normaliseGrid`
+there instead doubles the length of the piece, because it reads every character
+column as a position.
 
 **The editor edits cells, not characters.** `/new` draws each position as a
 button you click and type a fret into (`tab-grid.tsx`, over the cell model in
@@ -108,8 +115,7 @@ the last command that had a value, and returns with the next one that does.
 `TAB_PROVIDERS`. There is no reader-facing filter: `/api/search` still accepts
 `?provider=`, and the registry can only *narrow* `TAB_PROVIDERS` with it — a
 client must never be able to switch on a source the operator turned off — but
-nothing in the UI sets it, so every search asks the same question. The results
-header names the sources that actually answered.
+nothing in the UI sets it, so every search asks the same question.
 
 **`/list`** shows the whole library on the results screen. It is the same screen
 as a search, because the question behind the rows is the only difference: with

@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { regrid } from "@/lib/tab/grid";
 import type { SongSummary, Tab, TabType } from "@/lib/tabs/contract";
 
 /**
@@ -87,7 +88,31 @@ export const useDrafts = create<DraftsState>()(
       get: (id) => get().drafts[id] ?? null,
       list: () => Object.values(get().drafts).sort((a, b) => b.updatedAt - a.updatedAt),
     }),
-    { name: "tabsterm-drafts", version: 1 },
+    {
+      name: "tabsterm-drafts",
+      /**
+       * v2 widened a notation position from two characters to three. Drafts
+       * already in a browser were written at the old width, and the cell reader
+       * would chop them into three-character pieces that cut frets in half — so
+       * they are re-laid on the way in. The version number is what makes this
+       * exact: guessing a stave's width from its content is a heuristic, and
+       * getting it wrong destroys the tab rather than misreading it.
+       */
+      version: 2,
+      migrate: (state, from) => {
+        const s = state as { drafts: Record<string, Draft> };
+        if (from >= 2) return s;
+        return {
+          ...s,
+          drafts: Object.fromEntries(
+            Object.entries(s.drafts ?? {}).map(([id, draft]) => [
+              id,
+              { ...draft, content: regrid(draft.content, 2) },
+            ]),
+          ),
+        };
+      },
+    },
   ),
 );
 

@@ -69,28 +69,34 @@ async function openWith(page: Page, tab: string) {
 
 const staveLines = (tab: string) => tab.split("\n").filter((l) => /^[A-Ga-g]\|/.test(l));
 
-test("a ragged tab can be squared up, published, and then found", async ({ page }) => {
+test("a ragged tab squares itself up when touched, and can be saved and found", async ({
+  page,
+}) => {
   await openWith(page, RAGGED);
 
   // The grid check names the mismatched widths rather than just complaining.
   await expect(page.getByText(/stave lines are .* characters/)).toBeVisible();
 
-  await page.getByRole("button", { name: "align grid" }).click();
+  // There is no align button any more: writing through the grid is what squares
+  // the stave, because a cell is written back at a fixed width whatever it
+  // replaced. One edit anywhere rewrites the whole stave.
+  // The bottom string is all dashes in this fixture, so its cells carry the
+  // bare label — `cell()` matches exactly, and a cell holding a fret is named
+  // differently.
+  await page.getByRole("button", cell(6, 1)).click();
+  await page.keyboard.press("5");
   await expect(page.getByText("grid is square.")).toBeVisible();
 
-  // Every position is now two characters, so a 12 measures the same as a 0 and
-  // the strings still line up under each other. Polled, because autosave is
-  // debounced and the store is a moment behind the screen.
+  // Polled, because autosave is debounced and the store is a moment behind.
   await expect
     .poll(() => content(page).then((t) => new Set(staveLines(t).map((l) => l.length)).size))
     .toBe(1);
 
   const lines = staveLines(await content(page));
   expect(lines[0]).toContain("12");
-  expect(lines[0]).toContain("0-");
 
   await page.getByLabel("title").fill("Test Riff");
-  await page.getByRole("button", { name: "publish" }).click();
+  await page.getByRole("button", { name: "save" }).click();
   await expect(page).toHaveURL(/\/draft\/[a-z0-9]+/);
   await expect(page.getByRole("heading", { name: "Test Riff" })).toBeVisible();
   // A stave means the player has notes, so the bar must offer to play them.
@@ -139,15 +145,25 @@ test("the stave helper inserts a square grid", async ({ page }) => {
   await expect(page.getByText("grid is square.")).toBeVisible();
 });
 
-test("publishing is refused until there is something to publish", async ({ page }) => {
+test("saving is refused until there is something to save", async ({ page }) => {
   await page.goto("/new");
-  await expect(page.getByRole("button", { name: "publish" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "save" })).toBeDisabled();
 
   await page.getByLabel("title").fill("Only a title");
-  await expect(page.getByRole("button", { name: "publish" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "save" })).toBeDisabled();
 
   await page.getByRole("button", { name: "+ stave" }).click();
-  await expect(page.getByRole("button", { name: "publish" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "save" })).toBeEnabled();
+});
+
+test("the controls that could only be on are gone", async ({ page }) => {
+  await page.goto("/new");
+
+  // Autoscroll and align-grid were both toggles for something that has to be
+  // true anyway: a cursor you cannot see is not a cursor, and the grid can no
+  // longer be written out of square.
+  await expect(page.getByRole("button", { name: /autoscroll/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "align grid" })).toHaveCount(0);
 });
 
 test("clicking a position and typing a fret writes it into the tab", async ({ page }) => {

@@ -42,19 +42,19 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
     draft.tuning,
     draft.capo ?? 0,
   );
-  const [autoscroll, setAutoscroll] = useState(true);
   const activeStaveRef = useRef<HTMLDivElement>(null);
 
   const issues = useMemo(() => validateTab(draft.content), [draft.content]);
 
-  // Follow the cursor by scrolling to whichever stave holds it.
+  // Follow the cursor by scrolling to whichever stave holds it. Not optional:
+  // a cursor you cannot see is not a cursor.
   useEffect(() => {
-    if (!playing || !autoscroll) return;
+    if (!playing) return;
     const el = activeStaveRef.current;
     if (!el) return;
     const y = el.getBoundingClientRect().top + window.scrollY - 130;
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-  }, [playing, autoscroll]);
+  }, [playing]);
 
   const patch = (next: Partial<Draft>) => {
     setDraft((d) => ({ ...d, ...next }));
@@ -77,7 +77,7 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
   };
 
   const strings = draft.tuning?.length === 4 ? 4 : 6;
-  const canPublish = draft.title.trim().length > 0 && parsed.blocks.length > 0;
+  const canSave = draft.title.trim().length > 0 && parsed.blocks.length > 0;
 
   // Leaving the page has to silence the guitar; the audio graph outlives the
   // component that started it.
@@ -86,7 +86,12 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
     router.push(to);
   };
 
-  const publish = () => {
+  /**
+   * Nothing is published any more, so this is a save that also stops editing.
+   * `published` survives as the flag that decides whether a tab shows up in
+   * search — collapsing it into "there is only one kind of tab" is Etapa 3.
+   */
+  const save = () => {
     const next = { ...draft, published: true };
     upsert(next);
     setDraft(next);
@@ -98,7 +103,7 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
       <main className="mx-auto max-w-[980px] px-[22px] pb-[140px] pt-7">
         <CommandLine>tab --new</CommandLine>
         <p className="mt-1 mb-7 text-[11px] text-term-faint">
-          drafts live in this browser until there is somewhere to publish them.
+          tabs live in this browser until there is an account to keep them in.
           {saved ? " saved." : ""}
         </p>
 
@@ -175,9 +180,6 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
         <div className="mt-5 mb-2 flex flex-wrap items-center gap-3 text-[11px]">
           <Action onClick={() => append(blankStave(draft.tuning, strings))}>+ stave</Action>
           <Action onClick={() => append("[section]")}>+ section</Action>
-          <Action onClick={() => patch({ content: normaliseGrid(draft.content) })}>
-            align grid
-          </Action>
         </div>
 
         {/* The stave is the work. It gets the room and the frame; everything
@@ -221,13 +223,13 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
         <div className="mt-8 flex flex-wrap items-center gap-3 text-[12px]">
           <button
             type="button"
-            onClick={publish}
-            disabled={!canPublish}
+            onClick={save}
+            disabled={!canSave}
             className="border border-term-fg px-3 py-[7px] enabled:hover:border-term-accent enabled:hover:text-term-accent disabled:cursor-not-allowed disabled:border-term-line disabled:text-term-faint"
           >
-            publish →
+            save
           </button>
-          {!canPublish && (
+          {!canSave && (
             <span className="text-[11px] text-term-faint">needs a title and something to show</span>
           )}
           <span className="flex-1" />
@@ -252,7 +254,6 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
         totalColumns={parsed.totalColumns}
         toggle={toggle}
         setBpm={setBpm}
-        autoscroll={{ on: autoscroll, toggle: () => setAutoscroll((v) => !v) }}
       >
         <span className="flex-1" />
         <span className="text-[11px] text-term-faint">

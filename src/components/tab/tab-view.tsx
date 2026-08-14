@@ -21,7 +21,6 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
     tab.capo ?? 0,
   );
 
-  const [autoscroll, setAutoscroll] = useState(true);
   const [focusMode, setFocusMode] = useState(false);
   const activeStaveRef = useRef<HTMLDivElement>(null);
 
@@ -30,16 +29,17 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
     router.push(backHref);
   };
 
-  // Follow the cursor by scrolling to whichever stave holds it.
+  // Follow the cursor by scrolling to whichever stave holds it. Not optional:
+  // a cursor you cannot see is not a cursor.
   useEffect(() => {
-    if (!playing || !autoscroll) return;
+    if (!playing) return;
     const el = activeStaveRef.current;
     if (!el) return;
     const y = el.getBoundingClientRect().top + window.scrollY - 130;
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-  }, [playing, autoscroll]);
+  }, [playing]);
 
-  // space play · f focus · t theme · a autoscroll · esc back
+  // space play · f focus · t theme · esc back
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (anyModalOpen()) return;
@@ -55,7 +55,6 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
       }
       if (e.key === "f") setFocusMode((v) => !v);
       if (e.key === "t") cycle();
-      if (e.key === "a") setAutoscroll((v) => !v);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -119,7 +118,6 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
         totalColumns={parsed.totalColumns}
         toggle={toggle}
         setBpm={setBpm}
-        autoscroll={{ on: autoscroll, toggle: () => setAutoscroll((v) => !v) }}
         focus={{ on: focusMode, toggle: () => setFocusMode((v) => !v) }}
       >
         <span className="flex-1" />

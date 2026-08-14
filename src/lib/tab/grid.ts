@@ -12,7 +12,12 @@
  * character-column-as-time assumption stays true.
  */
 
-export const CELL_WIDTH = 2;
+/**
+ * Three, not two, so a fret always has a dash after it. At two, adjacent
+ * two-digit frets touched — `12` beside `12` read as `1212`, and nobody can see
+ * where one position ends.
+ */
+export const CELL_WIDTH = 3;
 
 /**
  * Notation positions in a bar — four beats of sixteenths. The generator lays
@@ -163,4 +168,47 @@ export function normaliseGrid(content: string): string {
   if (start !== -1) relay(start, lines.length);
 
   return out.join("\n");
+}
+
+/**
+ * Re-lay tablature written at a different cell width onto the current one.
+ *
+ * This is not what `normaliseGrid` does, and reaching for that instead is the
+ * trap: it reads every *character* column as a position, so running it over
+ * content already laid out two characters wide would turn each of those two
+ * characters into a position of its own and double the length of the piece.
+ * Here the old width is known, so each old cell is read whole and re-emitted.
+ *
+ * Needed once per change to `CELL_WIDTH`, for content that outlived it: the
+ * shipped library, and drafts sitting in someone's browser.
+ */
+export function regrid(content: string, fromWidth: number): string {
+  if (fromWidth === CELL_WIDTH) return content;
+
+  const lines = content.split(/\r?\n/);
+
+  return lines
+    .map((line) => {
+      if (!STAVE_LINE.test(line)) return line;
+
+      const label = LABEL.exec(line)?.[1] ?? "";
+      const body = line.slice(label.length);
+
+      let out = "";
+      for (let at = 0; at < body.length; ) {
+        if (body[at] === "|") {
+          out += "|";
+          at += 1;
+          continue;
+        }
+        // Trailing dashes are padding, not content: drop them and re-pad, so a
+        // `0-` becomes `0--` rather than `0--` plus whatever the old width left.
+        const cell = body.slice(at, at + fromWidth).replace(/-+$/, "");
+        out += cell.padEnd(CELL_WIDTH, "-");
+        at += fromWidth;
+      }
+
+      return label + out;
+    })
+    .join("\n");
 }

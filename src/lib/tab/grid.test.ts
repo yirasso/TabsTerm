@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CELL_WIDTH, normaliseGrid } from "./grid";
+import { CELL_WIDTH, normaliseGrid, regrid } from "./grid";
 
 const staveLines = (content: string) =>
   content.split("\n").filter((line) => /^[A-Ga-g]\|/.test(line));
@@ -10,15 +10,16 @@ describe("normaliseGrid", () => {
     expect(normaliseGrid(text)).toBe(text);
   });
 
-  it("gives every position two characters", () => {
+  it("gives every position the same width", () => {
     const out = normaliseGrid(`e|--0--|
 B|-----|
 G|-----|
 D|-----|
 A|-----|
 E|-----|`);
-    // Five positions plus the closing bar: 5 * 2 + 1 characters after the label.
-    expect(staveLines(out)[0]).toBe("e|----0-----|");
+    // Five source positions, each re-laid to CELL_WIDTH, plus the closing bar.
+    const expected = `e|${["", "", "0", "", ""].map((c) => c.padEnd(CELL_WIDTH, "-")).join("")}|`;
+    expect(staveLines(out)[0]).toBe(expected);
   });
 
   it("makes a two-digit fret measure the same as a one-digit one", () => {
@@ -126,5 +127,50 @@ A|---|
 E|---|`);
     // Three positions, each CELL_WIDTH wide, plus the closing bar.
     expect((staveLines(out)[0] ?? "").length).toBe(2 + 3 * CELL_WIDTH + 1);
+  });
+});
+
+describe("regrid", () => {
+  // A stave written when a position was two characters wide.
+  const OLD = `[intro]
+e|0-12--|
+B|--3---|
+G|------|
+D|------|
+play it softly`;
+
+  it("reads each old cell whole instead of one character at a time", () => {
+    const out = regrid(OLD, 2);
+    const top = staveLines(out)[0] ?? "";
+
+    // Three positions in, three positions out. normaliseGrid would have made
+    // six, because it treats every character column as a position.
+    expect(top.slice(2).replace(/\|/g, "").length).toBe(3 * CELL_WIDTH);
+    expect(top).toBe(`e|${["0", "12", ""].map((c) => c.padEnd(CELL_WIDTH, "-")).join("")}|`);
+  });
+
+  it("keeps frets on the position they were written on", () => {
+    const lines = staveLines(regrid(OLD, 2));
+    const at = (line: string, fret: string) => line.slice(2).replace(/\|/g, "").indexOf(fret);
+
+    expect(at(lines[0] ?? "", "12")).toBe(1 * CELL_WIDTH);
+    expect(at(lines[1] ?? "", "3")).toBe(1 * CELL_WIDTH);
+  });
+
+  it("leaves prose, labels and bar lines where they were", () => {
+    const out = regrid(OLD, 2).split("\n");
+    expect(out[0]).toBe("[intro]");
+    expect(out.at(-1)).toBe("play it softly");
+    for (const line of staveLines(regrid(OLD, 2))) expect(line.endsWith("|")).toBe(true);
+  });
+
+  it("squares the stave up", () => {
+    const lengths = new Set(staveLines(regrid(OLD, 2)).map((l) => l.length));
+    expect(lengths.size).toBe(1);
+  });
+
+  it("is a no-op when the width has not moved", () => {
+    const already = regrid(OLD, 2);
+    expect(regrid(already, CELL_WIDTH)).toBe(already);
   });
 });

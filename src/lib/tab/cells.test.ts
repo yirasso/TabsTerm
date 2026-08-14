@@ -8,42 +8,68 @@ import {
   setCell,
   writeStave,
 } from "./cells";
+import { CELL_WIDTH } from "./grid";
 
-const SQUARE = ["e|0-------|", "B|--3-----|", "G|--------|", "D|--------|"];
+/**
+ * Fixtures are built from CELL_WIDTH rather than typed out. Widening the grid
+ * once already meant rewriting every literal in this file, and a test that has
+ * to be edited whenever the constant moves is testing the constant.
+ */
+const cells = (...text: string[]) => text.map((t) => t.padEnd(CELL_WIDTH, "-")).join("");
+const line = (label: string, ...text: string[]) => `${label}|${cells(...text)}|`;
+
+const SQUARE = [
+  line("e", "0", "", "", ""),
+  line("B", "", "3", "", ""),
+  line("G", "", "", "", ""),
+  line("D", "", "", "", ""),
+];
 
 describe("readStave", () => {
-  it("reads a label and two-character cells", () => {
+  it("reads a label and fixed-width cells", () => {
     const grid = readStave(SQUARE);
     expect(grid.labels).toEqual(["e|", "B|", "G|", "D|"]);
-    expect(grid.cells[0]).toEqual(["0-", "--", "--", "--"]);
-    expect(grid.cells[1]).toEqual(["--", "3-", "--", "--"]);
+    expect(grid.cells[0]).toEqual([fretText(0), EMPTY_CELL, EMPTY_CELL, EMPTY_CELL]);
+    expect(grid.cells[1]).toEqual([EMPTY_CELL, fretText(3), EMPTY_CELL, EMPTY_CELL]);
   });
 
   it("records where the bars are, including the one that closes the stave", () => {
     expect(readStave(SQUARE).bars).toEqual([4]);
-    expect(readStave(["e|--|--|", "B|--|--|", "G|--|--|", "D|--|--|"]).bars).toEqual([1, 2]);
+    const two = ["e", "B", "G", "D"].map((l) => `${l}|${cells("")}|${cells("")}|`);
+    expect(readStave(two).bars).toEqual([1, 2]);
   });
 
   it("keeps two-digit frets in one cell", () => {
-    const grid = readStave(["e|12------|", "B|--------|", "G|--------|", "D|--------|"]);
-    expect(grid.cells[0]?.[0]).toBe("12");
+    const grid = readStave(["e", "B", "G", "D"].map((l) => line(l, "12", "", "", "")));
+    expect(grid.cells[0]?.[0]).toBe(fretText(12));
   });
 
   it("keeps technique marks rather than dropping what it does not understand", () => {
-    const grid = readStave(["e|5h7-----|", "B|--------|", "G|--------|", "D|--------|"]);
-    expect(grid.cells[0]).toEqual(["5h", "7-", "--", "--"]);
+    const grid = readStave(["e", "B", "G", "D"].map((l) => line(l, "5h", "7", "", "")));
+    expect(grid.cells[0]?.slice(0, 2)).toEqual(["5h".padEnd(CELL_WIDTH, "-"), fretText(7)]);
   });
 
   it("squares up ragged lines instead of refusing them", () => {
     // The case that makes hand-typed tab unreadable: lines of different lengths.
-    const grid = readStave(["e|0-3", "B|0", "G|", "D|0-3-5-"]);
+    const grid = readStave([
+      `e|${cells("0", "", "3")}`,
+      `B|${cells("0")}`,
+      "G|",
+      `D|${cells("0")}`,
+    ]);
     expect(new Set(grid.cells.map((row) => row.length)).size).toBe(1);
-    expect(grid.cells[1]).toEqual(["0-", EMPTY_CELL, EMPTY_CELL]);
+    expect(grid.cells[1]).toEqual([fretText(0), EMPTY_CELL, EMPTY_CELL]);
   });
 
   it("gives every line a bar that any line has, so bars stay in a column", () => {
-    const grid = readStave(["e|--|--", "B|-----", "G|-----", "D|-----"]);
-    expect(writeStave(grid).every((line) => line.includes("|--|"))).toBe(true);
+    const ragged = [
+      `e|${cells("")}|${cells("")}`,
+      `B|${cells("", "")}`,
+      `G|${cells("", "")}`,
+      `D|${cells("", "")}`,
+    ];
+    const written = writeStave(readStave(ragged));
+    expect(written.every((l) => l.includes(`|${EMPTY_CELL}|`))).toBe(true);
   });
 });
 
@@ -53,7 +79,8 @@ describe("writeStave", () => {
   });
 
   it("produces lines that all measure the same", () => {
-    const lines = writeStave(readStave(["e|0-3", "B|0", "G|", "D|0-3-5-"]));
+    const ragged = [`e|${cells("0", "", "3")}`, `B|${cells("0")}`, "G|", `D|${cells("0")}`];
+    const lines = writeStave(readStave(ragged));
     expect(new Set(lines.map((l) => l.length)).size).toBe(1);
   });
 
@@ -67,7 +94,7 @@ describe("setCell", () => {
   it("writes a fret without moving anything else", () => {
     const grid = setCell(readStave(SQUARE), 2, 1, fretText(12));
     const lines = writeStave(grid);
-    expect(lines[2]).toBe("G|--12----|");
+    expect(lines[2]).toBe(line("G", "", "12", "", ""));
     // The point of the whole exercise: the other strings did not move.
     expect(new Set(lines.map((l) => l.length)).size).toBe(1);
     expect(lines[0]).toBe(SQUARE[0]);
@@ -75,23 +102,27 @@ describe("setCell", () => {
 
   it("clears a cell back to dashes", () => {
     const lines = writeStave(setCell(readStave(SQUARE), 0, 0, fretText(null)));
-    expect(lines[0]).toBe("e|--------|");
+    expect(lines[0]).toBe(line("e", "", "", "", ""));
   });
 
   it("ignores coordinates that are not on the grid", () => {
     const grid = readStave(SQUARE);
-    expect(setCell(grid, 9, 0, "5-")).toBe(grid);
-    expect(setCell(grid, 0, 99, "5-")).toBe(grid);
-    expect(setCell(grid, 0, -1, "5-")).toBe(grid);
+    expect(setCell(grid, 9, 0, fretText(5))).toBe(grid);
+    expect(setCell(grid, 0, 99, fretText(5))).toBe(grid);
+    expect(setCell(grid, 0, -1, fretText(5))).toBe(grid);
   });
 });
 
 describe("fretText and cellFret", () => {
   it("writes one- and two-digit frets to the same width", () => {
-    expect(fretText(0)).toBe("0-");
-    expect(fretText(9)).toBe("9-");
-    expect(fretText(12)).toBe("12");
-    expect(fretText(0).length).toBe(fretText(12).length);
+    for (const fret of [0, 9, 12, 24]) expect(fretText(fret).length).toBe(CELL_WIDTH);
+    expect(fretText(12).startsWith("12")).toBe(true);
+  });
+
+  it("leaves a dash after a two-digit fret, so two in a row stay apart", () => {
+    // The reason the grid is wider than a fret: `12` beside `12` must not read
+    // as `1212`.
+    expect(fretText(12) + fretText(12)).toContain("12-12");
   });
 
   it("refuses frets that are not on a neck", () => {
@@ -112,10 +143,12 @@ describe("fretText and cellFret", () => {
 
 describe("replaceLines", () => {
   it("swaps a stave without disturbing what surrounds it", () => {
-    const content = "[intro]\ne|0-|\nB|--|\nG|--|\nD|--|\nplay it softly";
-    const out = replaceLines(content, 1, 4, ["e|5-|", "B|--|", "G|--|", "D|--|"]);
+    const content = `[intro]\n${SQUARE.join("\n")}\nplay it softly`;
+    const swapped = SQUARE.map((_, i) => line("eBGD"[i] ?? "e", "5", "", "", ""));
+    const out = replaceLines(content, 1, SQUARE.length, swapped);
+
     expect(out.split("\n")[0]).toBe("[intro]");
-    expect(out.split("\n")[1]).toBe("e|5-|");
-    expect(out.split("\n")[5]).toBe("play it softly");
+    expect(out.split("\n")[1]).toBe(swapped[0]);
+    expect(out.split("\n").at(-1)).toBe("play it softly");
   });
 });

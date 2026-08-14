@@ -25,13 +25,18 @@ npm run check     # typecheck + biome + vitest
   builtin behind that import is what the `server-only` marks exist to catch.
 - **ASCII tablature is a fixed-width grid.** `.tab-content` must keep `white-space: pre`
   and a monospace font with ligatures off. If it reflows, the tab is wrong.
-- **Every notation position is two characters wide** (`CELL_WIDTH` in
-  `src/lib/tab/grid.ts`): `0-`, `12` and `--` all measure the same. One character per
-  position breaks the moment anyone plays above the ninth fret, because a two-digit fret
-  either pushes the column out of line or silently eats the next time position.
-  `normaliseGrid` re-lays hand-written tab onto it and is idempotent. If you change
-  `CELL_WIDTH`, `COLUMNS_PER_BEAT` in `use-tab-playback.ts` must move with it or every
-  tab changes tempo.
+- **Every notation position is `CELL_WIDTH` characters wide** (`src/lib/tab/grid.ts`,
+  currently 3): `0--`, `12-` and `---` all measure the same. One character per position
+  breaks the moment anyone plays above the ninth fret, because a two-digit fret either
+  pushes the column out of line or silently eats the next time position. Two is enough
+  for that but leaves `12` touching the next `12`; three keeps a dash after every fret.
+- **Changing `CELL_WIDTH` is a migration, not a constant edit.** Three things follow it:
+  `COLUMNS_PER_BEAT` (derived in `use-tab-playback.ts`) or every tab changes tempo,
+  `src/data/seed-tabs.ts` via `node scripts/normalise-seeds.ts --from <old>`, and the
+  drafts store's persist `version` plus a `regrid` migration for tabs already in
+  someone's browser. Use `regrid`, never `normaliseGrid`, for that: `normaliseGrid`
+  reads every *character* column as a position, so on already-gridded content it
+  doubles the length of the piece.
 - **Design tokens are the `--tt-*` variables in `src/app/globals.css`** (one block per
   theme: paper/crt/amber/mono, switched by `data-theme` via next-themes). The
   `@theme inline` block maps them to `term-*` utilities; components reference those
@@ -69,8 +74,8 @@ npm run check     # typecheck + biome + vitest
   in `src/lib/tab/cells.ts`; there is no textarea. Editing through cells is what makes
   alignment impossible to break — a fret replaces a fixed-width cell instead of pushing
   the line sideways — so do not add a raw text box back without deciding what happens
-  when the two disagree. `align grid` stays for content that arrives ragged from
-  elsewhere.
+  when the two disagree. There is no `align grid` button: writing a cell rewrites the
+  whole stave at a fixed width, so touching a ragged stave anywhere squares it.
 - **Transcribing is a way of starting a tab, not a place to go.** It lives as a control
   inside the `/new` editor, so what comes out lands in a draft that already has the
   title, tuning and capo fields it needs. There is no `/listen` route; a page of its own

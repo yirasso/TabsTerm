@@ -1,14 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CELL_WIDTH } from "@/lib/tab/grid";
 import { createGuitar, type Guitar } from "@/lib/tab/guitar";
 import { type ParsedTab, parseTabNotes } from "@/lib/tab/parse-notes";
 
+/** Notation positions in a beat: a sixteenth note each at the shown bpm. */
+const POSITIONS_PER_BEAT = 4;
 /**
- * Characters per beat. Positions are two characters wide, so this is four
- * positions — a sixteenth note each at the shown bpm.
+ * Characters per beat. The parser reports a note's time as a character column,
+ * so this has to be derived from `CELL_WIDTH` rather than written down — a
+ * hard-coded 8 was correct only while a position was two characters wide, and
+ * widening the grid without it would have slowed every tab down by half.
  */
-const COLUMNS_PER_BEAT = 8;
+const COLUMNS_PER_BEAT = POSITIONS_PER_BEAT * CELL_WIDTH;
 /** Schedule this far ahead of the clock, so audio never starves. */
 const LOOKAHEAD_SECONDS = 0.4;
 const TICK_MS = 50;
