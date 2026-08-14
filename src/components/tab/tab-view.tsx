@@ -7,7 +7,6 @@ import { CommandLine } from "@/components/chrome/command-line";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
 import { useTabPlayback } from "@/hooks/use-tab-playback";
 import type { Tab } from "@/lib/tabs/contract";
-import { favKey, useSession } from "@/stores/session";
 import { anyModalOpen } from "@/stores/ui";
 import { CapabilityBadge } from "./capability-badge";
 import { PlaybackBar } from "./playback-bar";
@@ -27,19 +26,6 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
   const [focusMode, setFocusMode] = useState(false);
   const activeStaveRef = useRef<HTMLDivElement>(null);
 
-  const favs = useSession((s) => s.favs);
-  const toggleFavStore = useSession((s) => s.toggleFav);
-  const faved = favs.some((f) => favKey(f) === favKey(tab));
-  const toggleFav = () =>
-    toggleFavStore({
-      provider: tab.provider,
-      id: tab.id,
-      title: tab.title,
-      artist: tab.artist,
-      type: tab.type,
-      capability: tab.capability,
-    });
-
   const back = () => {
     stop();
     router.push(backHref);
@@ -54,7 +40,7 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
   }, [playing, autoscroll]);
 
-  // space play · f focus · t theme · a autoscroll · s fav · esc back
+  // space play · f focus · t theme · a autoscroll · esc back
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (anyModalOpen()) return;
@@ -71,7 +57,6 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
       if (e.key === "f") setFocusMode((v) => !v);
       if (e.key === "t") cycle();
       if (e.key === "a") setAutoscroll((v) => !v);
-      if (e.key === "s") toggleFav();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -143,13 +128,6 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
         autoscroll={{ on: autoscroll, toggle: () => setAutoscroll((v) => !v) }}
         focus={{ on: focusMode, toggle: () => setFocusMode((v) => !v) }}
       >
-        <button
-          type="button"
-          onClick={toggleFav}
-          className={`whitespace-nowrap hover:text-term-accent ${faved ? "text-term-accent" : "text-term-faint"}`}
-        >
-          {faved ? "★ favorited [s]" : "☆ favorite [s]"}
-        </button>
         <span className="flex-1" />
         <button type="button" onClick={back} className="text-term-faint hover:text-term-fg">
           [esc] back

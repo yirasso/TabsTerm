@@ -143,13 +143,39 @@ test("the digital guitar plays a tab and walks a cursor across it", async ({ pag
   await expect(page.locator('[data-testid="tab-cursor"]')).toHaveCount(0);
 });
 
-test("tab completes a partial command", async ({ page }) => {
+test("tab completes a partial command, and cycles the whole list", async ({ page }) => {
   await page.goto("/");
   const prompt = page.getByLabel("search for a song");
 
-  await prompt.fill("/art");
+  await prompt.fill("/ra");
   await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/artist ");
+  await expect(prompt).toHaveValue("/random");
+
+  // No command takes an argument any more, so a bare slash is where cycling
+  // lives: every command in turn, and shift walks back.
+  await prompt.fill("/");
+  await prompt.press("Tab");
+  await expect(prompt).toHaveValue("/new");
+  await prompt.press("Tab");
+  await expect(prompt).toHaveValue("/random");
+  await prompt.press("Shift+Tab");
+  await expect(prompt).toHaveValue("/new");
+});
+
+test("the prompt no longer offers the commands that were removed", async ({ page }) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+
+  // Searching is what typing does; /tab and /artist were a longer way to say it.
+  for (const gone of ["/fa", "/ta", "/art", "/au"]) {
+    await prompt.fill(gone);
+    await prompt.press("Tab");
+    await expect(prompt).toHaveValue(gone);
+  }
+
+  await prompt.fill("greensleeves");
+  await prompt.press("Enter");
+  await expect(page.getByText(/results ·/)).toBeVisible();
 });
 
 test("the prompt no longer offers a source filter", async ({ page }) => {

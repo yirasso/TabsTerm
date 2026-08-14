@@ -111,11 +111,10 @@ provenance — not user tabs.
 ## Current state
 
 The UI implements the TabsTerm design imported from Claude Design ("TabsTerm –
-Plataforma de tabs", `TabsTerm.dc.html`): terminal prompt with ghost-typing, results/
-favs screens, tab view with playback bar, about/auth/⌘K modals, keyboard-first.
+Plataforma de tabs", `TabsTerm.dc.html`): terminal prompt with ghost-typing, results
+screen, tab view with playback bar, about/auth/⌘K modals, keyboard-first.
 
 What is still fake and scheduled to become real (see the plan): the auth modal is a
-client-side mock, favorites are session-only in a zustand store, and the playback bar
-runs a `setInterval` over text sections rather than producing sound. The library is 5
-hand-written tabs. Motion/3D packages (`gsap`, `motion`, `lenis`, `three`,
+client-side mock and tabs live in localStorage rather than an account. The library is
+5 shipped public-domain tabs. Motion/3D packages (`gsap`, `motion`, `lenis`, `three`,
 `@react-three/*`) remain installed but unused, so they cost nothing until needed.

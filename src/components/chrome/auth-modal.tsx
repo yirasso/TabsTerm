@@ -10,7 +10,7 @@ import { useUi } from "@/stores/ui";
  */
 export function AuthModal() {
   const closeAuth = useUi((s) => s.closeAuth);
-  const { user, favs, login, logout } = useSession();
+  const { user, login, logout } = useSession();
 
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -87,7 +87,6 @@ export function AuthModal() {
           <div className="px-3.5 pb-3.5 pt-4">
             <pre className="mb-3.5 whitespace-pre-wrap text-[12px] leading-[1.8] text-term-dim">{`session   active
 user      ${user.email}
-saved     ${favs.length} tabs
 plan      free`}</pre>
             <button
               type="button"

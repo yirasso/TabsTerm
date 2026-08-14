@@ -14,7 +14,7 @@ type Item = { key: string; name: string; hint: string; run: () => void };
 /** ⌘K palette — hand-rolled to match the design's markup exactly. */
 export function Palette() {
   const router = useRouter();
-  const { closePalette, openAbout, openAuth, focusPrompt } = useUi();
+  const { closePalette, openAbout } = useUi();
   const { cycle } = useThemeCycle();
 
   const [pQuery, setPQuery] = useState("");
@@ -42,16 +42,9 @@ export function Palette() {
 
   const runCommand = (name: string) => {
     closePalette();
-    if (name.includes("<")) {
-      const prefix = `${name.split(" ")[0]} `;
-      router.push(`/?q=${encodeURIComponent(prefix)}` as Route);
-      focusPrompt();
-      return;
-    }
-    if (name === "/fav") router.push("/?view=favs" as Route);
+    if (name === "/new") router.push("/new" as Route);
     else if (name === "/random") router.push("/random" as Route);
     else if (name === "/theme") cycle();
-    else if (name === "/auth") openAuth();
     else if (name === "/man") openAbout();
   };
 

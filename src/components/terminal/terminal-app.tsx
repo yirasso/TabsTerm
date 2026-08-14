@@ -14,7 +14,7 @@ import { useSongSearch } from "@/hooks/use-song-search";
 import { CAPABILITY_LABEL, type SongSummary } from "@/lib/tabs/contract";
 import { slugify } from "@/lib/utils";
 import { DRAFT_PROVIDER, draftToSummary, useDrafts } from "@/stores/drafts";
-import { type FavEntry, useSession } from "@/stores/session";
+import { useSession } from "@/stores/session";
 import { anyModalOpen, useUi } from "@/stores/ui";
 import { COMMANDS, LEAVES_PROMPT, parseCommand, searchTermFor } from "./commands";
 import { type CycleState, nextCompletion } from "./completion";
@@ -23,7 +23,7 @@ import { useGhostTyper } from "./use-ghost-typer";
 const INTRO = `tabsterm — guitar tablature behind a text prompt.
 no ads, no scroll-jacked lyrics, no login. type a song, get the tab.`;
 
-type Screen = "home" | "results" | "favs";
+type Screen = "home" | "results";
 
 function noResultsText(term: string) {
   return `no match in index for "${term}"
@@ -38,25 +38,22 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
   const router = useRouter();
   const [query, setQuery] = useQueryState("q", { defaultValue: "", shallow: true });
   const [view, setView] = useQueryState("view", { shallow: true });
-  const screen: Screen = view === "results" ? "results" : view === "favs" ? "favs" : "home";
+  const screen: Screen = view === "results" ? "results" : "home";
 
   const [sel, setSel] = useState(0);
   const [selMoved, setSelMoved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const cycleRef = useRef<CycleState>(null);
 
-  const { openAbout, openAuth } = useUi();
+  const { openAbout } = useUi();
   const promptFocusTick = useUi((s) => s.promptFocusTick);
   const user = useSession((s) => s.user);
-  const favs = useSession((s) => s.favs);
-  const toggleFav = useSession((s) => s.toggleFav);
   const { cycle } = useThemeCycle();
 
   const debounced = useDebouncedValue(query, 250);
   const term = searchTermFor(debounced);
   const { data, isFetching } = useSongSearch(term);
 
-  const cmd = parseCommand(query);
   const isCmd = query.trim().startsWith("/");
 
   // Drafts are in localStorage, so the server knows nothing about them. Merge
@@ -115,31 +112,13 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
   const runCommand = (raw: string) => {
     const c = parseCommand(raw);
     if (!c) return;
-    if (c.cmd === "/fav") {
-      setView("favs");
-      setSel(0);
-      return;
-    }
     if (c.cmd === "/theme") return cycle();
-    if (c.cmd === "/auth") return openAuth();
     if (c.cmd === "/man") return openAbout();
     if (c.cmd === "/random") return router.push("/random" as Route);
     if (c.cmd === "/new") return router.push("/new" as Route);
-    if (["/tab", "/artist"].includes(c.cmd) && c.arg) {
-      setView("results");
-      setSel(0);
-      setSelMoved(false);
-    }
   };
 
   const pickCommand = (name: string) => {
-    if (name.includes("<")) {
-      setQuery(`${name.split(" ")[0]} `);
-      setSel(0);
-      setSelMoved(false);
-      setTimeout(() => inputRef.current?.focus(), 30);
-      return;
-    }
     if (!LEAVES_PROMPT.has(name)) setQuery("");
     runCommand(name);
   };
@@ -148,8 +127,8 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
     if (!query.trim()) return;
     if (isCmd) {
       const pick = commandSuggestions[sel];
-      if (cmd?.arg || !pick) runCommand(query);
-      else pickCommand(pick.name);
+      if (pick) pickCommand(pick.name);
+      else runCommand(query);
       return;
     }
     const pick = songSuggestions[sel];
@@ -197,7 +176,7 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
         }
         return;
       }
-      const rows: (SongSummary | FavEntry)[] = screen === "results" ? filteredResults : favs;
+      const rows = filteredResults;
       if (e.key === "ArrowDown" || e.key === "j") {
         e.preventDefault();
         setSel((s) => Math.min(rows.length - 1, s + 1));
@@ -225,9 +204,7 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
     if (e.key === "Tab") {
       // Tab belongs to the prompt here, not to focus navigation.
       e.preventDefault();
-      const step = nextCompletion(query, cycleRef.current, e.shiftKey ? -1 : 1, {
-        songs: songSuggestions.map((s) => s.title),
-      });
+      const step = nextCompletion(query, cycleRef.current, e.shiftKey ? -1 : 1);
       if (!step) return;
       cycleRef.current = step.state;
       setQuery(step.value);
@@ -362,113 +339,60 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
     );
   }
 
-  if (screen === "results") {
-    // Which sources actually answered. A tab is only as trustworthy as where it
-    // came from, so the reader gets to see that without opening anything.
-    const sourcesUsed = [...new Set(filteredResults.map((r) => r.provider))];
-    return (
-      <main className="mx-auto max-w-[900px] px-[22px] pb-20 pt-[34px]">
-        <CommandLine display>find “{term}”</CommandLine>
-        <div className="mt-2 text-[11px] text-term-faint">
-          {isFetching && filteredResults.length === 0
-            ? "querying sources…"
-            : `${filteredResults.length} results · sources: ${sourcesUsed.join(", ") || "none"}`}
-        </div>
-        {degraded.map((d) => (
-          <div key={d.provider} className="text-[11px] text-term-accent">
-            warn: {d.provider} unavailable — partial results
-          </div>
-        ))}
-        <div className="mb-6" aria-hidden />
-
-        {filteredResults.map((r, i) => (
-          <Link
-            key={`${r.provider}:${r.id}`}
-            href={songHref(r, "results")}
-            className={`grid grid-cols-[22px_1fr_70px_100px] items-baseline gap-3.5 border-b border-term-line py-2 pl-1 pr-2 text-term-fg ${i === sel ? "tt-selected" : ""}`}
-          >
-            <span className="text-term-accent">{i === sel ? "›" : " "}</span>
-            <span>
-              <span className="font-medium">{r.title}</span>{" "}
-              <span className="text-term-dim">· {r.artist}</span>
-            </span>
-            <span className="text-[12px]">
-              <CapabilityBadge capability={r.capability} />
-            </span>
-            <span className="whitespace-nowrap text-right text-[11px] text-term-faint">
-              {r.provider}
-            </span>
-          </Link>
-        ))}
-
-        {!isFetching && filteredResults.length === 0 && (
-          <>
-            <pre className="whitespace-pre-wrap text-[13px] leading-[1.9] text-term-dim">
-              {noResultsText(term)}
-            </pre>
-            <button
-              type="button"
-              onClick={goHome}
-              className="mt-[22px] inline-block whitespace-nowrap border border-term-line px-3 py-[7px] text-[12px] hover:border-term-accent hover:text-term-accent"
-            >
-              [esc] new search
-            </button>
-          </>
-        )}
-
-        {filteredResults.length > 0 && (
-          <div className="mt-[26px] text-[11px] text-term-faint">
-            <span className="text-term-dim">↑ ↓</span> move ·{" "}
-            <span className="text-term-dim">enter</span> open ·{" "}
-            <span className="text-term-dim">esc</span> back
-          </div>
-        )}
-      </main>
-    );
-  }
-
-  // favs
+  // Which sources actually answered. A tab is only as trustworthy as where it
+  // came from, so the reader gets to see that without opening anything.
+  const sourcesUsed = [...new Set(filteredResults.map((r) => r.provider))];
   return (
     <main className="mx-auto max-w-[900px] px-[22px] pb-20 pt-[34px]">
-      <CommandLine display>fav --list</CommandLine>
+      <CommandLine display>find “{term}”</CommandLine>
       <div className="mt-2 text-[11px] text-term-faint">
-        {favs.length} favorited · local to this session
+        {isFetching && filteredResults.length === 0
+          ? "querying sources…"
+          : `${filteredResults.length} results · sources: ${sourcesUsed.join(", ") || "none"}`}
       </div>
-      <div className="mb-6" aria-hidden />
-
-      {favs.map((f, i) => (
-        <div
-          key={`${f.provider}:${f.id}`}
-          className={`grid grid-cols-[22px_1fr_110px_70px_100px_60px] items-baseline gap-3.5 border-b border-term-line py-2 pl-1 pr-2 ${i === sel ? "tt-selected" : ""}`}
-        >
-          <span className="text-term-accent">{i === sel ? "›" : " "}</span>
-          <Link href={songHref(f, "favs")} className="text-term-fg">
-            <span className="font-medium">{f.title}</span>{" "}
-            <span className="text-term-dim">· {f.artist}</span>
-          </Link>
-          <span className="whitespace-nowrap text-[12px] text-term-dim">{f.type}</span>
-          <span className="text-[12px]">
-            <CapabilityBadge capability={f.capability} />
-          </span>
-          <span className="whitespace-nowrap text-[11px] text-term-faint">{f.provider}</span>
-          <button
-            type="button"
-            onClick={() => toggleFav(f)}
-            className="whitespace-nowrap text-right text-[11px] text-term-faint hover:text-term-accent"
-          >
-            unfav
-          </button>
+      {degraded.map((d) => (
+        <div key={d.provider} className="text-[11px] text-term-accent">
+          warn: {d.provider} unavailable — partial results
         </div>
       ))}
+      <div className="mb-6" aria-hidden />
 
-      {favs.length === 0 && (
-        <pre className="whitespace-pre-wrap text-[13px] leading-[1.9] text-term-dim">{`no favorites yet.
+      {filteredResults.map((r, i) => (
+        <Link
+          key={`${r.provider}:${r.id}`}
+          href={songHref(r, "results")}
+          className={`grid grid-cols-[22px_1fr_70px_100px] items-baseline gap-3.5 border-b border-term-line py-2 pl-1 pr-2 text-term-fg ${i === sel ? "tt-selected" : ""}`}
+        >
+          <span className="text-term-accent">{i === sel ? "›" : " "}</span>
+          <span>
+            <span className="font-medium">{r.title}</span>{" "}
+            <span className="text-term-dim">· {r.artist}</span>
+          </span>
+          <span className="text-[12px]">
+            <CapabilityBadge capability={r.capability} />
+          </span>
+          <span className="whitespace-nowrap text-right text-[11px] text-term-faint">
+            {r.provider}
+          </span>
+        </Link>
+      ))}
 
-  · open any tab and hit [s] to favorite it
-  · favorites live in this session only`}</pre>
+      {!isFetching && filteredResults.length === 0 && (
+        <>
+          <pre className="whitespace-pre-wrap text-[13px] leading-[1.9] text-term-dim">
+            {noResultsText(term)}
+          </pre>
+          <button
+            type="button"
+            onClick={goHome}
+            className="mt-[22px] inline-block whitespace-nowrap border border-term-line px-3 py-[7px] text-[12px] hover:border-term-accent hover:text-term-accent"
+          >
+            [esc] new search
+          </button>
+        </>
       )}
 
-      {favs.length > 0 && (
+      {filteredResults.length > 0 && (
         <div className="mt-[26px] text-[11px] text-term-faint">
           <span className="text-term-dim">↑ ↓</span> move ·{" "}
           <span className="text-term-dim">enter</span> open ·{" "}

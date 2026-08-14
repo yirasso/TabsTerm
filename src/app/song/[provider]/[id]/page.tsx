@@ -33,7 +33,7 @@ export default async function SongPage({ params, searchParams }: Props) {
   const q = first(sp.q);
   const view = first(sp.view);
   if (q) qs.set("q", q);
-  if (view === "results" || view === "favs") qs.set("view", view);
+  if (view === "results") qs.set("view", view);
   const backHref = (qs.size ? `/?${qs.toString()}` : "/") as Route;
 
   return <TabView tab={tab} backHref={backHref} />;

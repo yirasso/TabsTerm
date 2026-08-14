@@ -8,14 +8,16 @@ export type Command = { name: string; hint: string };
  */
 export const LEAVES_PROMPT = new Set(["/random", "/new"]);
 
-/** Slash commands surfaced in the prompt and the ⌘K palette. */
+/**
+ * Slash commands surfaced in the prompt and the ⌘K palette.
+ *
+ * None of them takes an argument any more. Searching is what the prompt does
+ * when you simply type — `/tab <song>` was a longer way to say the same thing,
+ * and a command that only restates the default is a thing to learn for nothing.
+ */
 export const COMMANDS: Command[] = [
-  { name: "/tab <song>", hint: "open the matching tab" },
-  { name: "/artist <name>", hint: "search by artist" },
   { name: "/new", hint: "write a tab, by hand or from audio" },
   { name: "/random", hint: "open a tab at random" },
-  { name: "/fav", hint: "list favorited tabs" },
-  { name: "/auth", hint: "account: login or signup" },
   { name: "/man", hint: "what tabsterm is" },
   { name: "/theme", hint: "cycle theme" },
 ];
@@ -24,12 +26,10 @@ export const COMMANDS: Command[] = [
 export const GHOSTS = [
   "greensleeves",
   "house of the rising sun",
-  "/tab ode to joy",
+  "ode to joy",
   "scarborough fair",
   "/new",
 ];
-
-const SEARCH_COMMANDS = ["/tab", "/artist"];
 
 export function parseCommand(q: string): { cmd: string; arg: string } | null {
   const m = /^\/(\S+)\s*(.*)$/.exec(q.trim());
@@ -37,9 +37,13 @@ export function parseCommand(q: string): { cmd: string; arg: string } | null {
   return { cmd: `/${m[1]}`, arg: (m[2] ?? "").trim() };
 }
 
-/** The term actually sent to the search API for a given prompt input. */
+/**
+ * The term actually sent to the search API for a given prompt input.
+ *
+ * Anything starting with a slash is a command, and no command searches — so a
+ * half-typed or unrecognised one searches for nothing rather than quietly
+ * looking up its own name.
+ */
 export function searchTermFor(q: string): string {
-  const c = parseCommand(q);
-  if (!c) return q.trim();
-  return SEARCH_COMMANDS.includes(c.cmd) ? c.arg : "";
+  return parseCommand(q) ? "" : q.trim();
 }
