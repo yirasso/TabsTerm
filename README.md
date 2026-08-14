@@ -73,7 +73,7 @@ src/
 `esc` back · on a tab: `space` play · `f` focus · `a` autoscroll ·
 `t` theme (anywhere).
 
-Slash commands: `/new`, `/random`, `/man`, `/theme`. None takes an argument —
+Slash commands: `/new`, `/rand`, `/man`, `/theme`. None takes an argument —
 typing anything that is not a command searches.
 
 **The grid.** Every notation position is two characters wide, so `0-`, `12` and
@@ -98,7 +98,7 @@ UI — and since a single value says nothing, it is not displayed anywhere.
 
 **Tab completion** works the way a shell's does, and lives in
 `src/components/terminal/completion.ts` as pure functions. `/ra` + Tab finishes to
-`/random`; repeated Tabs cycle the candidates and Shift+Tab walks back, so a bare
+`/rand`; repeated Tabs cycle the candidates and Shift+Tab walks back, so a bare
 `/` walks the whole list. No command takes an argument, so there is no second
 step — the shell's complete-the-word-then-complete-its-value behaviour left with
 the last command that had a value, and returns with the next one that does.
@@ -110,7 +110,7 @@ client must never be able to switch on a source the operator turned off — but
 nothing in the UI sets it, so every search asks the same question. The results
 header names the sources that actually answered.
 
-**`/random`** draws a tab from the sources that can enumerate their own catalog.
+**`/rand`** draws a tab from the sources that can enumerate their own catalog.
 That is an optional `random()` on `TabProvider`: a search-only upstream simply
 omits it and gets skipped, rather than having an id guessed for it. The pick
 happens on the server behind the `/random` route, so it is also a

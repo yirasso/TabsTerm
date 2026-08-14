@@ -6,7 +6,7 @@ export type Command = { name: string; hint: string };
  * router push and clobbers it back to `/`. The destination does not read `q`
  * anyway, so leaving it alone is both correct and simpler.
  */
-export const LEAVES_PROMPT = new Set(["/random", "/new"]);
+export const LEAVES_PROMPT = new Set(["/rand", "/new"]);
 
 /**
  * Slash commands, surfaced under the prompt as you type one.
@@ -17,7 +17,7 @@ export const LEAVES_PROMPT = new Set(["/random", "/new"]);
  */
 export const COMMANDS: Command[] = [
   { name: "/new", hint: "write a tab, by hand or from audio" },
-  { name: "/random", hint: "open a tab at random" },
+  { name: "/rand", hint: "open a tab at random" },
   { name: "/man", hint: "what tabsterm is" },
   { name: "/theme", hint: "cycle theme" },
 ];

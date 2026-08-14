@@ -149,7 +149,7 @@ test("tab completes a partial command, and cycles the whole list", async ({ page
 
   await prompt.fill("/ra");
   await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/random");
+  await expect(prompt).toHaveValue("/rand");
 
   // No command takes an argument any more, so a bare slash is where cycling
   // lives: every command in turn, and shift walks back.
@@ -157,7 +157,7 @@ test("tab completes a partial command, and cycles the whole list", async ({ page
   await prompt.press("Tab");
   await expect(prompt).toHaveValue("/new");
   await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/random");
+  await expect(prompt).toHaveValue("/rand");
   await prompt.press("Shift+Tab");
   await expect(prompt).toHaveValue("/new");
 });
@@ -222,18 +222,30 @@ test("the idle prompt shows the day's quote, and typing replaces it", async ({ p
   await expect(fortune).toBeHidden();
 });
 
-test("/random opens some tab from the hosted library", async ({ page }) => {
+test("/rand opens some tab from the hosted library", async ({ page }) => {
   await page.goto("/");
   const prompt = page.getByLabel("search for a song");
 
-  await prompt.fill("/random");
+  // The command is `/rand`; the route it lands on is still `/random`.
+  await prompt.fill("/rand");
   await prompt.press("Enter");
 
   await expect(page).toHaveURL(/\/song\/local\/[a-z-]+/);
   await expect(page.locator(".tab-content").first()).toBeVisible();
 });
 
-test("/random says so when the narrowed source cannot be browsed", async ({ page }) => {
+test("the old /random command no longer runs", async ({ page }) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+
+  await prompt.fill("/random");
+  await prompt.press("Enter");
+
+  // An unrecognised command does nothing — it must not search for its own name.
+  await expect(page).toHaveURL(/^[^?]*\/(\?.*)?$/);
+});
+
+test("the /random route says so when the narrowed source cannot be browsed", async ({ page }) => {
   // A source that is not enabled has nothing to draw from, and that is a state,
   // not a crash.
   await page.goto("/random?src=nope");

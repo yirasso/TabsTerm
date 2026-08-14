@@ -7,7 +7,7 @@ const ALL = COMMANDS.map((c) => c.name.split(" ")[0]);
 describe("completionsFor", () => {
   it("completes a partial command", () => {
     expect(completionsFor("/ne")).toEqual(["/new"]);
-    expect(completionsFor("/ra")).toEqual(["/random"]);
+    expect(completionsFor("/ra")).toEqual(["/rand"]);
   });
 
   it("offers every command for a bare slash", () => {
@@ -68,6 +68,6 @@ describe("nextCompletion", () => {
 
   it("recomputes when the cycle state belongs to a different input", () => {
     const stale: CycleState = { candidates: ALL as string[], index: 0, applied: "/new" };
-    expect(tab("/ra", stale)?.value).toBe("/random");
+    expect(tab("/ra", stale)?.value).toBe("/rand");
   });
 });

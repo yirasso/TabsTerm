@@ -47,7 +47,7 @@ describe("COMMANDS", () => {
       expect(words).not.toContain(gone);
     }
     // A guard that would pass on an empty list is not a guard.
-    expect(words).toEqual(["/new", "/random", "/man", "/theme"]);
+    expect(words).toEqual(["/new", "/rand", "/man", "/theme"]);
   });
 
   it("has no command that takes an argument", () => {

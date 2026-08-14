@@ -113,7 +113,9 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
     if (!c) return;
     if (c.cmd === "/theme") return cycle();
     if (c.cmd === "/man") return openAbout();
-    if (c.cmd === "/random") return router.push("/random" as Route);
+    // The command is `/rand`; `/random` is the route it opens. They are allowed
+    // to differ — the URL is shareable and reads better spelled out.
+    if (c.cmd === "/rand") return router.push("/random" as Route);
     if (c.cmd === "/new") return router.push("/new" as Route);
   };
 
