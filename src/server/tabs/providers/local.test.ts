@@ -75,6 +75,38 @@ describe("localProvider", () => {
   });
 });
 
+describe("localProvider.list", () => {
+  it("hands back the whole library", async () => {
+    const listed = await localProvider.list?.();
+    // Every id it lists must resolve, and every tab must be listed: the two
+    // together are what makes this the catalog rather than a sample of it.
+    for (const summary of listed ?? []) {
+      expect(await localProvider.getTab(summary.id)).not.toBeNull();
+    }
+    expect(listed?.length).toBeGreaterThan(1);
+    expect(await localProvider.random?.()).not.toBeNull();
+  });
+
+  it("is sorted by title, because a list with no query has no relevance", async () => {
+    const titles = (await localProvider.list?.())?.map((s) => s.title) ?? [];
+    expect(titles).toEqual([...titles].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it("omits tab content, the same as search does", async () => {
+    for (const summary of (await localProvider.list?.()) ?? []) {
+      expect(summary).not.toHaveProperty("content");
+    }
+  });
+
+  it("finds every listed tab by searching for its title", async () => {
+    // If listing and searching disagree about what exists, one of them is lying.
+    for (const summary of (await localProvider.list?.()) ?? []) {
+      const found = await localProvider.search(summary.title);
+      expect(found.map((r) => r.id)).toContain(summary.id);
+    }
+  });
+});
+
 describe("localProvider.random", () => {
   it("always returns a tab from its own library", async () => {
     for (let i = 0; i < 20; i++) {

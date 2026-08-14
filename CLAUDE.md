@@ -84,8 +84,10 @@ npm run check     # typecheck + biome + vitest
   URL through nuqs, and that write lands *after* a `router.push` and clobbers it back
   to `/`. `LEAVES_PROMPT` in `src/components/terminal/commands.ts` is the list; add to
   it when a new command navigates.
-- **`TabProvider.random` is optional by design.** Only sources that can enumerate
-  their catalog implement it; `randomTab` skips the rest instead of guessing ids.
+- **`TabProvider.list` and `.random` are optional by design, and mean the same thing:**
+  this source can enumerate its own catalog. A search-only upstream implements neither,
+  and `listAllProviders` / `randomTab` leave it out rather than counting it as a source
+  that answered with nothing.
 - **E2E runs with `TAB_PROVIDERS=local`** (set in `playwright.config.ts`) so it is
   deterministic and offline. Songsterr is gone; `local` is the only provider today.
 

@@ -25,6 +25,12 @@ no ads, no scroll-jacked lyrics, no login. type a song, get the tab.`;
 
 type Screen = "home" | "results";
 
+/** An empty library is a beginning, not a failed search. */
+const EMPTY_LIBRARY = `nothing in the library yet.
+
+  · write one with /new — by hand, or from a recording
+  · the shipped examples should be here too; if they are not, no source is enabled`;
+
 function noResultsText(term: string) {
   return `no match in index for "${term}"
 
@@ -51,21 +57,29 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
 
   const debounced = useDebouncedValue(query, 250);
   const term = searchTermFor(debounced);
-  const { data, isFetching } = useSongSearch(term);
+
+  // The results screen with nothing in the prompt is the whole library, which is
+  // what `/list` navigates to. Same screen, same rows — the question behind them
+  // is "everything" rather than "what matched".
+  const listing = screen === "results" && !term;
+  const { data, isFetching } = useSongSearch(term, { all: listing });
 
   const isCmd = query.trim().startsWith("/");
 
   // Drafts are in localStorage, so the server knows nothing about them. Merge
-  // the published ones in here, ahead of the catalog — someone searching for a
-  // tab they just wrote should find it first.
+  // them in here, ahead of the catalog — someone looking for a tab they just
+  // wrote should find it first.
   const drafts = useDrafts((s) => s.drafts);
   const draftHits = useMemo(() => {
+    const published = Object.values(drafts).filter((d) => d.published);
+    if (listing) return published.map(draftToSummary);
+
     const needle = slugify(term);
     if (!needle) return [];
-    return Object.values(drafts)
-      .filter((d) => d.published && slugify(`${d.title} ${d.artist}`).includes(needle))
+    return published
+      .filter((d) => slugify(`${d.title} ${d.artist}`).includes(needle))
       .map(draftToSummary);
-  }, [drafts, term]);
+  }, [drafts, term, listing]);
 
   const filteredResults = useMemo(
     () => [...draftHits, ...(data?.results ?? [])],
@@ -117,6 +131,13 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
     // to differ — the URL is shareable and reads better spelled out.
     if (c.cmd === "/rand") return router.push("/random" as Route);
     if (c.cmd === "/new") return router.push("/new" as Route);
+    if (c.cmd === "/list") {
+      // Stays in the app rather than routing, so `setQuery("")` in pickCommand
+      // is safe here and is in fact what puts the screen into listing mode.
+      setView("results");
+      setSel(0);
+      setSelMoved(false);
+    }
   };
 
   const pickCommand = (name: string) => {
@@ -342,11 +363,11 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
   const sourcesUsed = [...new Set(filteredResults.map((r) => r.provider))];
   return (
     <main className="mx-auto max-w-[900px] px-[22px] pb-20 pt-[34px]">
-      <CommandLine display>find “{term}”</CommandLine>
+      <CommandLine display>{listing ? "list --all" : `find “${term}”`}</CommandLine>
       <div className="mt-2 text-[11px] text-term-faint">
         {isFetching && filteredResults.length === 0
-          ? "querying sources…"
-          : `${filteredResults.length} results · sources: ${sourcesUsed.join(", ") || "none"}`}
+          ? "reading the library…"
+          : `${filteredResults.length} ${listing ? "tabs" : "results"} · sources: ${sourcesUsed.join(", ") || "none"}`}
       </div>
       {degraded.map((d) => (
         <div key={d.provider} className="text-[11px] text-term-accent">
@@ -378,14 +399,14 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
       {!isFetching && filteredResults.length === 0 && (
         <>
           <pre className="whitespace-pre-wrap text-[13px] leading-[1.9] text-term-dim">
-            {noResultsText(term)}
+            {listing ? EMPTY_LIBRARY : noResultsText(term)}
           </pre>
           <button
             type="button"
             onClick={goHome}
             className="mt-[22px] inline-block whitespace-nowrap border border-term-line px-3 py-[7px] text-[12px] hover:border-term-accent hover:text-term-accent"
           >
-            [esc] new search
+            [esc] back to the prompt
           </button>
         </>
       )}

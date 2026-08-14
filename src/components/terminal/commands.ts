@@ -17,6 +17,7 @@ export const LEAVES_PROMPT = new Set(["/rand", "/new"]);
  */
 export const COMMANDS: Command[] = [
   { name: "/new", hint: "write a tab, by hand or from audio" },
+  { name: "/list", hint: "every tab you have" },
   { name: "/rand", hint: "open a tab at random" },
   { name: "/man", hint: "what tabsterm is" },
   { name: "/theme", hint: "cycle theme" },

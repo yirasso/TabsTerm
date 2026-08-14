@@ -49,6 +49,7 @@ src/
     page.tsx                        the terminal (home / results screens)
     song/[provider]/[id]/page.tsx   tab view (server-fetched, no HTTP hop)
     api/search/route.ts             GET /api/search?q=
+    api/tabs/route.ts               GET /api/tabs — the whole library
     api/tab/[provider]/[id]/route.ts
     globals.css                     theme tokens (--tt-*) + term-* utilities
   components/
@@ -73,7 +74,7 @@ src/
 `esc` back · on a tab: `space` play · `f` focus · `a` autoscroll ·
 `t` theme (anywhere).
 
-Slash commands: `/new`, `/rand`, `/man`, `/theme`. None takes an argument —
+Slash commands: `/new`, `/list`, `/rand`, `/man`, `/theme`. None takes an argument —
 typing anything that is not a command searches.
 
 **The grid.** Every notation position is two characters wide, so `0-`, `12` and
@@ -109,6 +110,14 @@ the last command that had a value, and returns with the next one that does.
 client must never be able to switch on a source the operator turned off — but
 nothing in the UI sets it, so every search asks the same question. The results
 header names the sources that actually answered.
+
+**`/list`** shows the whole library on the results screen. It is the same screen
+as a search, because the question behind the rows is the only difference: with
+nothing in the prompt, everything matched. That also makes `/?view=results` a
+shareable link to the library. Listing is not "search for an empty string" —
+searching needs a minimum length so the first keystroke does not fire a request,
+and listing has no query at all, so they are separate endpoints (`/api/tabs`) and
+a separate optional `list()` on `TabProvider`.
 
 **`/rand`** draws a tab from the sources that can enumerate their own catalog.
 That is an optional `random()` on `TabProvider`: a search-only upstream simply

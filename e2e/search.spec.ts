@@ -157,7 +157,7 @@ test("tab completes a partial command, and cycles the whole list", async ({ page
   await prompt.press("Tab");
   await expect(prompt).toHaveValue("/new");
   await prompt.press("Tab");
-  await expect(prompt).toHaveValue("/rand");
+  await expect(prompt).toHaveValue("/list");
   await prompt.press("Shift+Tab");
   await expect(prompt).toHaveValue("/new");
 });
@@ -220,6 +220,41 @@ test("the idle prompt shows the day's quote, and typing replaces it", async ({ p
 
   await page.getByLabel("search for a song").fill("greensleeves");
   await expect(fortune).toBeHidden();
+});
+
+test("/list shows the whole library on the results screen", async ({ page }) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+
+  await prompt.fill("/list");
+  await prompt.press("Enter");
+
+  await expect(page.getByText("list --all")).toBeVisible();
+  await expect(page.getByText(/\d+ tabs · sources: local/)).toBeVisible();
+
+  // Every shipped tab, not the handful a query would have matched.
+  for (const title of ["Greensleeves", "Scarborough Fair", "Ode to Joy"]) {
+    await expect(page.getByRole("link", { name: new RegExp(title) })).toBeVisible();
+  }
+});
+
+test("listing is a bare results URL, so it can be shared", async ({ page }) => {
+  await page.goto("/?view=results");
+
+  await expect(page.getByText("list --all")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Greensleeves/ })).toBeVisible();
+});
+
+test("/list leaves the prompt empty, which is what puts it in listing mode", async ({ page }) => {
+  await page.goto("/?q=greensleeves&view=results");
+  await expect(page.getByText(/find/)).toBeVisible();
+
+  await page.goto("/");
+  await page.getByLabel("search for a song").fill("/list");
+  await page.getByLabel("search for a song").press("Enter");
+
+  await expect(page).toHaveURL(/view=results/);
+  await expect(page).not.toHaveURL(/q=/);
 });
 
 test("/rand opens some tab from the hosted library", async ({ page }) => {

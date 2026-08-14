@@ -36,19 +36,24 @@ export type SearchOptions = {
 };
 
 /**
- * Fan out to the enabled providers. One slow or broken source degrades the
- * response instead of failing it — the UI can then say which source is down.
- *
  * `options.provider` can only narrow `TAB_PROVIDERS`, never widen it: a client
  * must not be able to switch on a source the operator turned off.
  */
-export async function searchAllProviders(
-  query: string,
-  options: SearchOptions = {},
-): Promise<SearchResponse> {
+function scoped(options: SearchOptions): TabProvider[] {
   const enabled = activeProviders();
-  const providers = options.provider ? enabled.filter((p) => p.id === options.provider) : enabled;
-  const settled = await Promise.allSettled(providers.map((p) => p.search(query, options.signal)));
+  return options.provider ? enabled.filter((p) => p.id === options.provider) : enabled;
+}
+
+/**
+ * Ask several providers the same question at once. One slow or broken source
+ * degrades the response instead of failing it — the UI can then say which
+ * source is down rather than showing an empty page.
+ */
+async function fanOut(
+  providers: TabProvider[],
+  ask: (provider: TabProvider) => Promise<SongSummary[]>,
+): Promise<Pick<SearchResponse, "results" | "degraded">> {
+  const settled = await Promise.allSettled(providers.map(ask));
 
   const results: SongSummary[] = [];
   const degraded: SearchResponse["degraded"] = [];
@@ -66,7 +71,26 @@ export async function searchAllProviders(
     }
   });
 
-  return { query, results: dedupe(results), degraded };
+  return { results: dedupe(results), degraded };
+}
+
+export async function searchAllProviders(
+  query: string,
+  options: SearchOptions = {},
+): Promise<SearchResponse> {
+  const found = await fanOut(scoped(options), (p) => p.search(query, options.signal));
+  return { query, ...found };
+}
+
+/**
+ * Everything the enumerable sources hold. A search-only upstream is left out
+ * entirely rather than counted as a source that answered with nothing — the
+ * same distinction `randomTab` makes.
+ */
+export async function listAllProviders(options: SearchOptions = {}): Promise<SearchResponse> {
+  const capable = scoped(options).filter((p) => typeof p.list === "function");
+  const found = await fanOut(capable, (p) => p.list?.(options.signal) ?? Promise.resolve([]));
+  return { query: "", ...found };
 }
 
 export async function getTab(
@@ -89,9 +113,7 @@ export async function getTab(
  * revisiting only once there is more than one.
  */
 export async function randomTab(options: SearchOptions = {}): Promise<Tab | null> {
-  const enabled = activeProviders();
-  const scoped = options.provider ? enabled.filter((p) => p.id === options.provider) : enabled;
-  const capable = scoped.filter((p) => typeof p.random === "function");
+  const capable = scoped(options).filter((p) => typeof p.random === "function");
 
   const provider = capable[Math.floor(Math.random() * capable.length)];
   if (!provider?.random) return null;

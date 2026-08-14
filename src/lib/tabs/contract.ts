@@ -100,8 +100,15 @@ export interface TabProvider {
   search(query: string, signal?: AbortSignal): Promise<SongSummary[]>;
   getTab(id: string, signal?: AbortSignal): Promise<Tab | null>;
   /**
+   * Optional, and the same capability as `random` below: only a source that can
+   * enumerate its own catalog can hand back all of it. A search-only upstream
+   * omits both, and `/list` leaves it out rather than pretending it returned
+   * nothing.
+   */
+  list?(signal?: AbortSignal): Promise<SongSummary[]>;
+  /**
    * Optional. Only sources that can enumerate their own catalog can offer a
-   * random pick — a search-only upstream simply omits this, and `/random` skips
+   * random pick — a search-only upstream simply omits this, and `/rand` skips
    * it rather than guessing an id.
    */
   random?(signal?: AbortSignal): Promise<Tab | null>;

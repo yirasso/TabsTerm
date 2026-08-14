@@ -57,6 +57,14 @@ export const localProvider: TabProvider = {
     );
   },
 
+  async list(): Promise<SongSummary[]> {
+    // Alphabetical, because a list with no query has no relevance to sort by
+    // and an arbitrary order reads as a bug.
+    return tabs
+      .map((tab) => songSummarySchema.parse(tab))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  },
+
   async getTab(id: string): Promise<Tab | null> {
     return tabs.find((t) => t.id === id) ?? null;
   },
