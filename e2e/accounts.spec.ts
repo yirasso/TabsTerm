@@ -37,6 +37,18 @@ test("a tab id in the URL does not get past it either", async ({ page }) => {
   await expect(page.getByLabel("title")).toHaveCount(0);
 });
 
+test("the handle can only be edited by somebody who has one", async ({ page }) => {
+  // Signed out there is no handle to rename, and the modal must not offer a
+  // field that writes nowhere.
+  await page.goto("/");
+  await page.getByRole("button", { name: "account" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "account" });
+  await expect(dialog.getByRole("button", { name: /continue with google/i })).toBeVisible();
+  await expect(dialog.getByLabel("handle")).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "rename" })).toHaveCount(0);
+});
+
 test("reading needs no account", async ({ page }) => {
   // The other half of the rule, and the half worth protecting: the library is
   // open, and only writing asks who you are.
