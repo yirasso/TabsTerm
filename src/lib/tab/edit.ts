@@ -89,16 +89,15 @@ export function validateTab(content: string): TabIssue[] {
 }
 
 /**
- * Insert text at a cursor position, returning the new value and caret.
+ * Add a block at the end of a tab, with a blank line before it.
  *
- * The insert always lands on its own lines so a stave never fuses with prose,
- * and always ends on a fresh one so the caret is ready for whatever comes next.
+ * The blank line is structural, not spacing. A stave is a *run* of consecutive
+ * stave lines, so two staves written back to back are one stave to the parser —
+ * a single twelve-string thing that falls back to a six-string tuning, plays
+ * half of itself, and cannot be removed separately from its neighbour. Every
+ * path that grows a tab goes through here for that reason.
  */
-export function insertAt(value: string, at: number, text: string) {
-  const before = value.slice(0, at);
-  const after = value.slice(at);
-  const lead = before === "" || before.endsWith("\n") ? "" : "\n";
-  const trail = after.startsWith("\n") ? "" : "\n";
-  const insert = `${lead}${text}${trail}`;
-  return { value: before + insert + after, caret: at + insert.length };
+export function appendBlock(content: string, text: string): string {
+  const before = content.replace(/\s+$/, "");
+  return before === "" ? text : `${before}\n\n${text}`;
 }

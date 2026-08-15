@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { isPlayable, parseTabNotes, STANDARD_TUNING } from "./parse-notes";
+import { BARS_PER_STAVE, CELL_WIDTH, COLUMNS_PER_BAR } from "./grid";
+import { barAtColumn, isPlayable, parseTabNotes, STANDARD_TUNING } from "./parse-notes";
 
 // Every line is 11 characters: the `e|` label plus nine of stave.
 const STAVE = `e|--0--3--|
@@ -11,6 +12,15 @@ E|--------|`;
 const STAVE_WIDTH = 11;
 /** First fret column — index 4, after the two label characters and two dashes. */
 const FIRST = 4;
+
+/** The `e|` a stave line opens with: two characters that are not notation. */
+const LABEL_WIDTH = 2;
+const BAR_CHARS = COLUMNS_PER_BAR * CELL_WIDTH;
+/** A stave as everything in the product writes one: `BARS_PER_STAVE` full bars. */
+const HOUSE_STAVE = ["e", "B", "G", "D", "A", "E"]
+  .map((string) => `${string}|${`${"-".repeat(BAR_CHARS)}|`.repeat(BARS_PER_STAVE)}`)
+  .join("\n");
+const HOUSE_WIDTH = LABEL_WIDTH + BARS_PER_STAVE * (BAR_CHARS + 1);
 
 describe("parseTabNotes", () => {
   it("returns nothing for empty content", () => {
@@ -44,9 +54,10 @@ describe("parseTabNotes", () => {
   it("says which line of the source each stave starts on", () => {
     // An editor writing a stave back needs to find it again; searching for it
     // by content would pick the wrong one when two staves are identical.
-    const { blocks } = parseTabNotes(`[intro]\n${STAVE}\n\nsome prose\n${STAVE}`);
+    const source = `intro\n${STAVE}\n\nsome prose\n${STAVE}`;
+    const { blocks } = parseTabNotes(source);
     const staves = blocks.filter((b) => b.kind === "stave");
-    const lines = `[intro]\n${STAVE}\n\nsome prose\n${STAVE}`.split("\n");
+    const lines = source.split("\n");
     for (const stave of staves) {
       expect(lines[stave.firstLine]).toBe(stave.lines[0]);
     }
@@ -75,28 +86,32 @@ E|------|`);
     expect(notes).toEqual([]);
   });
 
-  it("keeps labels, prose and staves as separate ordered blocks", () => {
-    const { blocks } = parseTabNotes(`[Intro]\nplay it softly\n${STAVE}`);
-    expect(blocks.map((b) => b.kind)).toEqual(["label", "text", "stave"]);
-    // Verbatim: the editor puts this text in an input, so folding its case
-    // would eat an uppercase letter as it was typed.
-    expect(blocks[0]).toMatchObject({ kind: "label", text: "Intro" });
+  it("keeps prose and staves as separate ordered blocks", () => {
+    const { blocks } = parseTabNotes(`play it softly\n${STAVE}`);
+    expect(blocks.map((b) => b.kind)).toEqual(["text", "stave"]);
+  });
+
+  it("has no notion of a section — a bracketed line is just words", () => {
+    // Sections are gone. `[Intro]` is not punctuation the parser knows, so it
+    // reads as the prose it looks like rather than becoming a heading.
+    const { blocks } = parseTabNotes(`[Intro]\n${STAVE}`);
+    expect(blocks[0]).toMatchObject({ kind: "text", text: "[Intro]" });
   });
 
   it("says where every block starts and how many lines it holds", () => {
-    const { blocks } = parseTabNotes(`[Intro]\n\nplay it softly\n${STAVE}`);
+    const { blocks } = parseTabNotes(`${STAVE}\n\nplay it softly`);
     // Removing a block splices these lines out, so prose has to own the blank
     // line above it — otherwise deleting the words leaves the gap behind.
     expect(blocks.map((b) => [b.firstLine, b.lineCount])).toEqual([
-      [0, 1],
-      [1, 2],
-      [3, 6],
+      [0, 6],
+      [6, 2],
     ]);
   });
 
   it("gives every block a distinct id, even with repeated text", () => {
-    const { blocks } = parseTabNotes("[Verse]\nsame\n\n[Verse]\nsame");
+    const { blocks } = parseTabNotes(`same\n${STAVE}\n\nsame`);
     const ids = blocks.map((b) => b.id);
+    expect(ids).toHaveLength(3);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -138,6 +153,22 @@ E|-----|`);
     expect(notes.some((n) => n.column >= STAVE_WIDTH)).toBe(true);
   });
 
+  it("counts bars off COLUMNS_PER_BAR, not by dividing the line length", () => {
+    // A stave line carries characters that are not notation: the `e|` label and
+    // a bar line closing every bar. Two bars measure 100 characters, not 96, so
+    // dividing the character total by a bar width said three bars per stave —
+    // and the reader offered five bars of a four-bar tab.
+    const { blocks, totalBars } = parseTabNotes(`${HOUSE_STAVE}\n\n${HOUSE_STAVE}`);
+    const staves = blocks.flatMap((b) => (b.kind === "stave" ? [b] : []));
+
+    expect(staves.map((s) => s.width)).toEqual([HOUSE_WIDTH, HOUSE_WIDTH]);
+    expect(staves.map((s) => s.barStarts.length)).toEqual([BARS_PER_STAVE, BARS_PER_STAVE]);
+    // The running offset is what lets a second stave keep counting rather than
+    // start again at one.
+    expect(staves.map((s) => s.barOffset)).toEqual([0, BARS_PER_STAVE]);
+    expect(totalBars).toBe(BARS_PER_STAVE * 2);
+  });
+
   it("treats a run shorter than four lines as prose, not a stave", () => {
     const { blocks } = parseTabNotes("e|--0--|\nB|--1--|");
     expect(blocks.every((b) => b.kind !== "stave")).toBe(true);
@@ -163,6 +194,37 @@ D|--0---|`;
   it("handles CRLF content", () => {
     const { notes } = parseTabNotes(STAVE.replace(/\n/g, "\r\n"));
     expect(notes.length).toBeGreaterThan(0);
+  });
+});
+
+describe("barAtColumn", () => {
+  const parsed = parseTabNotes(`${HOUSE_STAVE}\n\n${HOUSE_STAVE}`);
+
+  it("is nought before the cursor exists", () => {
+    expect(barAtColumn(parsed, -1)).toBe(0);
+  });
+
+  it("puts the label characters in the bar they open", () => {
+    // The cursor crosses `e|` on its way into the stave. Those columns are not
+    // a bar of their own, so the counter must not blink through a nought.
+    expect(barAtColumn(parsed, 0)).toBe(1);
+    expect(barAtColumn(parsed, LABEL_WIDTH)).toBe(1);
+  });
+
+  it("turns the bar where the bar line is written", () => {
+    expect(barAtColumn(parsed, LABEL_WIDTH + BAR_CHARS - 1)).toBe(1);
+    // The bar line itself closes the bar it follows rather than opening one.
+    expect(barAtColumn(parsed, LABEL_WIDTH + BAR_CHARS)).toBe(1);
+    expect(barAtColumn(parsed, LABEL_WIDTH + BAR_CHARS + 1)).toBe(2);
+  });
+
+  it("keeps counting into the next stave", () => {
+    expect(barAtColumn(parsed, HOUSE_WIDTH)).toBe(BARS_PER_STAVE + 1);
+  });
+
+  it("stays on the last bar once the cursor runs past the end", () => {
+    // Playback keeps ticking after the final note, and "bar 5 / 4" is a lie.
+    expect(barAtColumn(parsed, parsed.totalColumns * 2)).toBe(parsed.totalBars);
   });
 });
 

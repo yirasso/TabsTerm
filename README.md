@@ -55,7 +55,7 @@ src/
   components/
     chrome/                         header, about/auth modals, theme cycle
     terminal/                       prompt, ghost typer, slash commands, screens
-    tab/                            tab view, playback bar, section parser
+    tab/                            tab view, playback bar, block renderer
   stores/                           zustand: session (mock user) + ui + drafts
   hooks/                            client data hooks
   lib/
@@ -107,11 +107,21 @@ being inserted into a line, a two-digit fret cannot push the strings below it ou
 of column — the alignment problem is gone by construction rather than corrected
 after the fact. There is no raw text box.
 
-Which is why every block has to be reachable from the grid itself: a section name
-is an input, and each block — section, prose or stave — carries its own `remove`.
-`parseTabNotes` gives every block a `firstLine` and `lineCount` for exactly this,
-so an edit splices the lines it is already looking at instead of searching the
-content for text that may appear twice.
+Which is why every block has to be reachable from the grid itself: prose and
+staves each carry their own `remove`. `parseTabNotes` gives every block a
+`firstLine` and `lineCount` for exactly this, so an edit splices the lines it is
+already looking at instead of searching the content for text that may appear
+twice.
+
+**A blank line between staves is structure.** A stave is a run of consecutive
+stave lines, so two written back to back are a single twelve-string stave that
+falls back to a six-string tuning and plays half of itself. `appendBlock` keeps
+that line when a tab grows and `removeLines` keeps it when a block sitting
+between two staves is deleted.
+
+**There are no sections.** `[Intro]` is not punctuation the parser knows — a
+bracketed line is prose like any other, and there is no `+ section`. Prose blocks
+remain, because chord names written above a stave are what they are for.
 
 **Guitar tablature only.** `tabTypeSchema` has a single member: no chord sheets,
 no bass, no ukulele. It stays an enum so one of those can come back as an added

@@ -8,7 +8,7 @@ import { TabGrid } from "@/components/editor/tab-grid";
 import { TranscribeControls } from "@/components/editor/transcribe-controls";
 import { PlaybackBar } from "@/components/tab/playback-bar";
 import { useTabPlayback } from "@/hooks/use-tab-playback";
-import { blankStave, insertAt, validateTab } from "@/lib/tab/edit";
+import { appendBlock, blankStave, validateTab } from "@/lib/tab/edit";
 import { type Draft, useDrafts } from "@/stores/drafts";
 
 const TUNINGS: Record<string, string[]> = {
@@ -70,9 +70,9 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
     return () => clearTimeout(timer);
   }, [draft, upsert]);
 
-  /** Add a stave or a section at the end, which is where a tab grows. */
+  /** Add a stave at the end, which is where a tab grows. */
   const append = (text: string) => {
-    patch({ content: insertAt(draft.content, draft.content.length, text).value });
+    patch({ content: appendBlock(draft.content, text) });
   };
 
   const strings = draft.tuning?.length === 4 ? 4 : 6;
@@ -168,12 +168,9 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
             onResult={(result, name) => {
               // Append rather than replace: a second take belongs after the
               // first, and nobody should lose what they already wrote by
-              // reaching for the microphone. A blank line keeps it a block of
-              // its own instead of running into whatever came before.
-              const gap = draft.content.trim() ? "\n" : "";
+              // reaching for the microphone.
               patch({
-                content: insertAt(draft.content, draft.content.length, `${gap}${result.content}`)
-                  .value,
+                content: appendBlock(draft.content, result.content),
                 capo: result.capo,
                 ...(draft.title.trim() || !name ? {} : { title: name }),
               });
@@ -183,7 +180,6 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
 
         <div className="mt-5 mb-2 flex flex-wrap items-center gap-3 text-[11px]">
           <Action onClick={() => append(blankStave(draft.tuning, strings))}>+ stave</Action>
-          <Action onClick={() => append("[section]")}>+ section</Action>
         </div>
 
         {/* The stave is the work. It gets the room and the frame; everything
@@ -255,7 +251,7 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
         playing={playing}
         bpm={bpm}
         column={column}
-        totalColumns={parsed.totalColumns}
+        parsed={parsed}
         toggle={toggle}
         setBpm={setBpm}
       >

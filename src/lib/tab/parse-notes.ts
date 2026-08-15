@@ -12,6 +12,8 @@
  * from the notes it is supposed to be sitting on.
  */
 
+import { CELL_WIDTH, COLUMNS_PER_BAR } from "./grid";
+
 /** MIDI note numbers, high string first, matching how tab lines are stacked. */
 export const STANDARD_TUNING = [64, 59, 55, 50, 45, 40];
 export const BASS_TUNING = [43, 38, 33, 28];
@@ -35,13 +37,12 @@ export type TabBlock = {
   /**
    * Where this block sits in the source text. An editor rewrites or removes a
    * block by splicing these lines, so it never has to search the content for
-   * something it is already looking at — and two identical sections stay
-   * distinguishable.
+   * something it is already looking at — and two blocks holding the same words
+   * stay distinguishable.
    */
   firstLine: number;
   lineCount: number;
 } & (
-  | { kind: "label"; text: string }
   | { kind: "text"; text: string }
   | {
       kind: "stave";
@@ -51,6 +52,16 @@ export type TabBlock = {
       width: number;
       /** Add this to a local column to get a global one. */
       columnOffset: number;
+      /**
+       * Local character column at which each bar becomes the current one; its
+       * length is how many bars this stave holds. Bar structure is reported
+       * here rather than left for a caller to divide out of `width`, because
+       * `width` counts the string label and the bar lines and those are not
+       * notation — see `readBarStarts`.
+       */
+      barStarts: number[];
+      /** Add this to a local bar index to get a global bar number. */
+      barOffset: number;
     }
 );
 
@@ -59,12 +70,12 @@ export type ParsedTab = {
   /** Every note, in global column order. */
   notes: TabNote[];
   totalColumns: number;
+  /** Bars in the whole piece, counted by `COLUMNS_PER_BAR`. */
+  totalBars: number;
 };
 
 /** `e|`, `B|`, `G#|`, `D |` — a string label followed by a bar. */
 const STAVE_LINE = /^\s*([A-Ga-g][#b]?)\s*\|/;
-/** A line that is only `[Something]`. */
-const LABEL_LINE = /^\s*\[(.+)\]\s*$/;
 
 const PITCH_CLASS: Record<string, number> = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
 
@@ -135,6 +146,62 @@ function readNotes(lines: string[], tuning: number[]): TabNote[] {
 }
 
 /**
+ * Characters in a bar. `COLUMNS_PER_BAR` counts notation positions and this
+ * parser times by character column, so the two only agree once multiplied.
+ */
+const CHARS_PER_BAR = COLUMNS_PER_BAR * CELL_WIDTH;
+
+/**
+ * Where each bar begins on this stave, in the stave's own character columns.
+ *
+ * Bars are counted off `COLUMNS_PER_BAR` — the one definition of a bar — while
+ * skipping the characters that are not notation: the two-character string label
+ * and every bar line. That is exactly what dividing a line length by a bar
+ * width cannot do. A two-bar stave measures 100 characters, not 96, so the
+ * division said three bars and the counter grew by half a bar per stave.
+ *
+ * The first bar starts at column 0 rather than after the label, because the
+ * cursor crosses the label on its way into the stave and those columns are not
+ * a bar of their own to report.
+ */
+function readBarStarts(lines: string[], width: number): number[] {
+  const label = Math.max(0, ...lines.map((line) => STAVE_LINE.exec(line)?.[0].length ?? 0));
+  const starts: number[] = [];
+  let positions = 0;
+
+  for (let col = label; col < width; col++) {
+    // Bar lines are punctuation, not positions — and structural, so if one
+    // string has one here they all do.
+    if (lines.some((line) => line[col] === "|")) continue;
+    if (positions % CHARS_PER_BAR === 0) starts.push(col);
+    positions++;
+  }
+
+  if (starts.length > 0) starts[0] = 0;
+  return starts;
+}
+
+/**
+ * Which bar the cursor sits in, counting from 1, or 0 before playback starts.
+ *
+ * Walks the blocks instead of dividing the column, because the column is a
+ * character count and characters are not all notation.
+ */
+export function barAtColumn(parsed: ParsedTab, column: number): number {
+  if (column < 0) return 0;
+
+  let bar = 0;
+  for (const block of parsed.blocks) {
+    if (block.kind !== "stave" || block.columnOffset > column) continue;
+    for (const [index, start] of block.barStarts.entries()) {
+      if (block.columnOffset + start > column) break;
+      bar = block.barOffset + index + 1;
+    }
+  }
+  return bar;
+}
+
+/**
  * `capo` shifts every note up by that many frets. Tablature is written relative
  * to the capo — that is the whole point of one, the shapes stay in first
  * position — so the numbers on the page are not the pitches that sound, and
@@ -145,12 +212,13 @@ export function parseTabNotes(
   tuning: string[] | null = null,
   capo = 0,
 ): ParsedTab {
-  const empty: ParsedTab = { blocks: [], notes: [], totalColumns: 0 };
+  const empty: ParsedTab = { blocks: [], notes: [], totalColumns: 0, totalBars: 0 };
   if (!content) return empty;
 
   const blocks: TabBlock[] = [];
   const notes: TabNote[] = [];
   let offset = 0;
+  let bars = 0;
 
   let staveRun: string[] = [];
   let staveStart = 0;
@@ -181,6 +249,7 @@ export function parseTabNotes(
       const staveTuning = tuningFor(staveRun, tuning).map((open) => open + capo);
       const local = readNotes(staveRun, staveTuning);
       const width = Math.max(...staveRun.map((l) => l.length), 0);
+      const barStarts = readBarStarts(staveRun, width);
 
       blocks.push({
         id: nextId("stave"),
@@ -189,11 +258,14 @@ export function parseTabNotes(
         notes: local,
         width,
         columnOffset: offset,
+        barStarts,
+        barOffset: bars,
         firstLine: staveStart,
         lineCount: staveRun.length,
       });
       for (const note of local) notes.push({ ...note, column: note.column + offset });
       offset += width;
+      bars += barStarts.length;
     } else if (staveRun.length > 0) {
       if (textRun.length === 0) textStart = staveStart;
       textRun.push(...staveRun);
@@ -213,23 +285,8 @@ export function parseTabNotes(
 
     flushStave();
 
-    const label = LABEL_LINE.exec(line);
-    if (label) {
-      flushText();
-      blocks.push({
-        id: nextId("label"),
-        kind: "label",
-        // Kept as written. The reader uppercases in CSS, and since the editor
-        // shows this text in an input, folding the case here would delete an
-        // uppercase letter the moment someone typed it.
-        text: label[1] ?? "",
-        firstLine: index,
-        lineCount: 1,
-      });
-    } else {
-      if (textRun.length === 0) textStart = index;
-      textRun.push(line);
-    }
+    if (textRun.length === 0) textStart = index;
+    textRun.push(line);
   });
 
   flushStave();
@@ -243,7 +300,7 @@ export function parseTabNotes(
   // the sequence is deterministic.
   notes.sort((a, b) => a.column - b.column || a.line - b.line);
 
-  return { blocks, notes, totalColumns: offset };
+  return { blocks, notes, totalColumns: offset, totalBars: bars };
 }
 
 /** A tab is playable when we found at least one note to play. */

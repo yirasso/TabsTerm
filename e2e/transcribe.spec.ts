@@ -85,7 +85,8 @@ test("a solo melody becomes tablature with the right frets", async ({ page }) =>
   const value = await content(page);
   // The heading carries whatever the analysis worked out — a tempo when the
   // playing had a pulse it could find, and a capo when one was in the way.
-  expect(value).toMatch(/^\[take 1( · [^\]]+)?\]/);
+  // Plain prose, not a bracketed heading: there are no sections to be one of.
+  expect(value).toMatch(/^take 1( · [^\n]+)?\n/);
   // Every detected pitch must land on a fret that actually produces it.
   for (const fret of ["0", "3", "7", "12"]) {
     expect(value).toContain(fret);
@@ -124,7 +125,6 @@ test("transcribing keeps what was already written", async ({ page }) => {
   await page.waitForSelector("#audio-file");
 
   // Something already written by hand, through the grid.
-  await page.getByRole("button", { name: "+ section" }).click();
   await page.getByRole("button", { name: "+ stave" }).click();
   await page.getByRole("button", { name: "string 1, position 1", exact: true }).click();
   await page.keyboard.press("4");
@@ -139,8 +139,12 @@ test("transcribing keeps what was already written", async ({ page }) => {
   await transcribed(page);
   // Reaching for the microphone must never cost someone the tab they wrote.
   const value = await content(page);
-  expect(value).toContain("[section]");
-  expect(value.indexOf("[section]")).toBeLessThan(value.indexOf("take 1"));
+  const written = value.split("\n").findIndex((l) => /^e\|.*4/.test(l));
+  expect(written).toBeGreaterThanOrEqual(0);
+  // The take lands after the hand-written stave, and the two stay separate
+  // blocks — consecutive stave lines would have fused into one.
+  expect(written).toBeLessThan(value.split("\n").findIndex((l) => l.includes("take 1")));
+  expect(value).toMatch(/\n\s*\ntake 1/);
 });
 
 test("the prompt no longer offers a place to go and listen", async ({ page }) => {

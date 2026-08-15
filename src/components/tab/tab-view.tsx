@@ -119,7 +119,7 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
         playing={playing}
         bpm={bpm}
         column={column}
-        totalColumns={parsed.totalColumns}
+        parsed={parsed}
         toggle={toggle}
         setBpm={setBpm}
         focus={{ on: focusMode, toggle: () => setFocusMode((v) => !v) }}

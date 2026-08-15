@@ -24,17 +24,6 @@ export function TabRender({
   return (
     <div className="flex flex-col gap-[34px]">
       {blocks.map((block) => {
-        if (block.kind === "label") {
-          return (
-            <div
-              key={block.id}
-              className="whitespace-nowrap text-[11px] text-term-dim uppercase tracking-[0.14em]"
-            >
-              {block.text}
-            </div>
-          );
-        }
-
         if (block.kind === "text") {
           return (
             <pre key={block.id} className="tab-content text-[13px] text-term-dim leading-[1.8]">

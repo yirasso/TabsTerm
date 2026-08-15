@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { blankStave, insertAt, staveLabels, validateTab } from "./edit";
+import { appendBlock, blankStave, staveLabels, validateTab } from "./edit";
 import { CELL_WIDTH, COLUMNS_PER_BAR } from "./grid";
+import { parseTabNotes } from "./parse-notes";
 
 describe("staveLabels", () => {
   it("uses standard labels when no tuning is declared", () => {
@@ -81,19 +82,23 @@ E|-----|`);
   });
 });
 
-describe("insertAt", () => {
-  it("puts the insert on its own lines", () => {
-    const { value } = insertAt("hello", 5, "world");
-    expect(value).toBe("hello\nworld\n");
+describe("appendBlock", () => {
+  it("leaves a blank line between blocks", () => {
+    expect(appendBlock("hello", "world")).toBe("hello\n\nworld");
   });
 
-  it("does not add blank lines that are already there", () => {
-    const { value } = insertAt("hello\n", 6, "world");
-    expect(value).toBe("hello\nworld\n");
+  it("adds nothing in front of the first block", () => {
+    expect(appendBlock("", "world")).toBe("world");
+    expect(appendBlock("\n\n", "world")).toBe("world");
   });
 
-  it("reports a caret sitting after the insert", () => {
-    const { value, caret } = insertAt("ab", 2, "X");
-    expect(value.slice(0, caret)).toBe("ab\nX\n");
+  it("keeps two appended staves two staves", () => {
+    // Without the blank line the parser reads one twelve-line stave: a stave is
+    // a run of consecutive stave lines, so back-to-back staves fuse.
+    const twice = appendBlock(appendBlock("", blankStave()), blankStave());
+    const staves = parseTabNotes(twice).blocks.filter((b) => b.kind === "stave");
+
+    expect(staves).toHaveLength(2);
+    for (const stave of staves) expect(stave.lines).toHaveLength(6);
   });
 });

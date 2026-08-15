@@ -4,11 +4,13 @@ import {
   EMPTY_CELL,
   fretText,
   readStave,
+  removeLines,
   replaceLines,
   setCell,
   writeStave,
 } from "./cells";
 import { CELL_WIDTH } from "./grid";
+import { parseTabNotes } from "./parse-notes";
 
 /**
  * Fixtures are built from CELL_WIDTH rather than typed out. Widening the grid
@@ -143,12 +145,30 @@ describe("fretText and cellFret", () => {
 
 describe("replaceLines", () => {
   it("swaps a stave without disturbing what surrounds it", () => {
-    const content = `[intro]\n${SQUARE.join("\n")}\nplay it softly`;
+    const content = `intro\n${SQUARE.join("\n")}\nplay it softly`;
     const swapped = SQUARE.map((_, i) => line("eBGD"[i] ?? "e", "5", "", "", ""));
     const out = replaceLines(content, 1, SQUARE.length, swapped);
 
-    expect(out.split("\n")[0]).toBe("[intro]");
+    expect(out.split("\n")[0]).toBe("intro");
     expect(out.split("\n")[1]).toBe(swapped[0]);
     expect(out.split("\n").at(-1)).toBe("play it softly");
+  });
+});
+
+describe("removeLines", () => {
+  it("takes a block's own lines and nothing else", () => {
+    const content = `intro\n${SQUARE.join("\n")}\nplay it softly`;
+    expect(removeLines(content, 0, 1)).toBe(`${SQUARE.join("\n")}\nplay it softly`);
+  });
+
+  it("leaves a blank line where the cut would weld two staves together", () => {
+    // Adjacent stave lines are one stave, so splicing the prose out from
+    // between two of them would silently make a single twelve-string stave.
+    const content = `${SQUARE.join("\n")}\n\nprose\n\n${SQUARE.join("\n")}`;
+    const out = removeLines(content, SQUARE.length, 3);
+
+    expect(out.split("\n")).toHaveLength(SQUARE.length * 2 + 1);
+    expect(out).not.toContain("prose");
+    expect(parseTabNotes(out).blocks.filter((b) => b.kind === "stave")).toHaveLength(2);
   });
 });

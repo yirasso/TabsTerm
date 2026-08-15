@@ -9,19 +9,25 @@ const MAN_PAGE = `NAME
 DESCRIPTION
   Every tab site buried the tab under ads, autoplay video and
   a wall of lyrics. TabsTerm is the opposite: one prompt, one
-  query, the tab. Type a song, pick a version, play. Slash
-  commands for everything else, favorites with [s], no login
-  required to read anything.
+  query, the tab. Type a song, open it, play. Slash commands
+  for everything else — type / to see them.
 
-BADGES
-  Every result says up front what it gives you.
+READING
+  [space] plays the tab on a digital guitar and walks a
+  cursor along it in time. [f] clears the page down to the
+  stave, [t] cycles the theme, [esc] goes back. Tablature
+  never scrolls sideways: a stave is two bars, and two bars
+  is what the column fits.
 
-  audio   playable — a digital guitar plays it back and a
-          cursor walks the tab in time
-  text    readable, but with no stave we can turn into notes
+WRITING
+  /new is a grid, not a text box — every position is a cell
+  three characters wide, so a fret replaces a cell instead
+  of pushing the line out of true. Record or upload one
+  guitar and it comes back as a draft to correct.
 
-  Everything here is hosted by us. Nothing is scraped from
-  another site, so nothing sends you somewhere else to read.`;
+  Your tabs are yours: nothing you write is published or
+  shown to anyone else, the audio never leaves this browser,
+  and nothing here is scraped from another site.`;
 
 export function AboutModal() {
   const closeAbout = useUi((s) => s.closeAbout);
@@ -64,7 +70,9 @@ export function AboutModal() {
             esc
           </button>
         </div>
-        <div className="px-3.5 pb-3.5 pt-4">
+        {/* The page grew past what a short window shows; it scrolls rather than
+            running off the bottom, and the $ line stays put above it. */}
+        <div className="max-h-[68vh] overflow-y-auto px-3.5 pb-3.5 pt-4">
           <pre className="mb-4 whitespace-pre-wrap text-[12.5px] leading-[1.85] text-term-dim">
             {MAN_PAGE}
           </pre>

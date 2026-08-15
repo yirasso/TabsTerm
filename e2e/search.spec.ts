@@ -111,7 +111,11 @@ test("every stave line ends in the same place", async ({ page }) => {
   await page.goto("/song/local/canon-in-d");
 
   const widths = await page.evaluate(() => {
-    const pre = document.querySelector("main pre.tab-content");
+    // Prose blocks render in a `pre.tab-content` too, so pick the first one
+    // that actually holds a stave.
+    const pre = [...document.querySelectorAll("main pre.tab-content")].find((el) =>
+      /^[A-Ga-g]\|/m.test(el.textContent ?? ""),
+    );
     const node = pre?.firstChild;
     if (!pre || !node) return [];
 

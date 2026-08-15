@@ -90,11 +90,19 @@ npm run check     # typecheck + biome + vitest
   `.tab-content` letter-spacing, because the playback cursor is placed in `ch` and any
   tracking drifts it a character every thirty columns.
 - **With no text box, anything not reachable from the grid is unreachable, full stop.**
-  A section name is an input and every block carries a `remove`; each edit splices by
-  `block.firstLine`/`lineCount` from `parseTabNotes`, never by searching the content —
-  two sections can share a name. For the same reason the parser keeps a label's text
-  verbatim: it used to lowercase it, which silently ate an uppercase letter as it was
-  typed. The reader uppercases in CSS, so nothing lost that.
+  Every block carries a `remove`; each edit splices by `block.firstLine`/`lineCount`
+  from `parseTabNotes`, never by searching the content — two blocks can hold the same
+  words.
+- **A blank line between staves is structure, not spacing.** A stave is a *run* of
+  consecutive stave lines, so two staves written back to back are one twelve-string
+  stave: it falls back to a six-string tuning, plays half of itself and cannot be
+  removed separately. `appendBlock` (`src/lib/tab/edit.ts`) is why every path that grows
+  a tab leaves the line, and `removeLines` (`src/lib/tab/cells.ts`) is why deleting the
+  prose between two staves leaves a blank line behind instead of welding them.
+- **There are no sections.** `[Intro]` is not punctuation the parser knows; a bracketed
+  line reads as the prose it looks like. There is no `label` block kind, no `+ section`,
+  and the transcriber's `take 1 · ~96 bpm` heading is a plain line. Prose blocks still
+  exist — chord names above a stave are the point of them.
 - **Transcribing is a way of starting a tab, not a place to go.** It lives as a control
   inside the `/new` editor, so what comes out lands in a draft that already has the
   title, tuning and capo fields it needs. There is no `/listen` route; a page of its own

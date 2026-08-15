@@ -82,6 +82,8 @@ export async function transcribeAudio(
   return {
     capo,
     bpm,
-    content: `[${heading.join(" · ")}]\n${notesToAscii(fretted, { tuning: names, tempo })}`,
+    // A plain line of prose, not a bracketed heading: there are no sections any
+    // more, so brackets would only be punctuation nothing reads.
+    content: `${heading.join(" · ")}\n${notesToAscii(fretted, { tuning: names, tempo })}`,
   };
 }

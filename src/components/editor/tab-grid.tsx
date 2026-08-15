@@ -6,6 +6,7 @@ import {
   fretText,
   MAX_FRET,
   readStave,
+  removeLines,
   replaceLines,
   setCell,
   writeStave,
@@ -45,8 +46,8 @@ const same = (a: Spot | null, b: Spot) =>
  * alignment problem stops existing instead of being cleaned up afterwards.
  *
  * It is the only way in — there is no text box behind it — so everything a tab
- * is made of has to be reachable from here: frets, section names, and removing
- * a block that should not be there.
+ * is made of has to be reachable from here: the frets, and removing a block
+ * that should not be there.
  */
 export function TabGrid({
   content,
@@ -130,7 +131,7 @@ export function TabGrid({
 
   /** Cut a block out, taking its own lines and nothing else. */
   const removeBlock = (block: TabBlock) =>
-    onChange(replaceLines(content, block.firstLine, block.lineCount, []));
+    onChange(removeLines(content, block.firstLine, block.lineCount));
 
   const Remove = ({ block, what }: { block: TabBlock; what: string }) => (
     <button
@@ -146,36 +147,10 @@ export function TabGrid({
   return (
     <div className="tab-content text-[15px] leading-[1.85]">
       {blocks.map((block) => {
-        if (block.kind === "label") {
-          return (
-            <div key={block.id} className="mt-4 mb-1 flex items-baseline gap-2 first:mt-0">
-              {/* Editable, because with no text box a mistyped section name was
-                  unreachable: the grid took every click and there was nothing
-                  else to put a cursor in. Bounded so the closing bracket stays
-                  next to the word rather than at the far side of the page. */}
-              <span className="text-term-accent">[</span>
-              <input
-                aria-label="section name"
-                value={block.text}
-                onChange={(e) =>
-                  onChange(
-                    replaceLines(content, block.firstLine, block.lineCount, [
-                      `[${e.target.value}]`,
-                    ]),
-                  )
-                }
-                className="-mx-1 min-w-0 max-w-[240px] flex-1 border-0 bg-transparent px-1 text-term-accent caret-term-accent outline-none"
-              />
-              <span className="text-term-accent">]</span>
-              {/* Every `remove` sits on the same right edge, whatever kind of
-                  block it belongs to. */}
-              <span className="flex-1" />
-              <Remove block={block} what="section" />
-            </div>
-          );
-        }
         if (block.kind === "text") {
           return (
+            // Every `remove` sits on the same right edge, whatever kind of
+            // block it belongs to.
             <div key={block.id} className="mb-1 flex items-baseline gap-3">
               <span className="min-w-0 flex-1 whitespace-pre-wrap text-term-dim">{block.text}</span>
               <Remove block={block} what="text" />

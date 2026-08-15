@@ -127,8 +127,8 @@ export function setCell(grid: StaveGrid, line: number, position: number, text: s
 /**
  * Splice stave lines back into the whole tab.
  *
- * The grid only ever owns its own lines, so labels, prose and other staves
- * around it survive an edit untouched.
+ * The grid only ever owns its own lines, so prose and other staves around it
+ * survive an edit untouched.
  */
 export function replaceLines(
   content: string,
@@ -139,4 +139,20 @@ export function replaceLines(
   const all = content.split(/\r?\n/);
   all.splice(from, count, ...lines);
   return all.join("\n");
+}
+
+const STAVE_LINE = /^\s*[A-Ga-g][#b]?\s*\|/;
+
+/**
+ * Cut a block's lines out, keeping the blocks around it apart.
+ *
+ * Deleting is not just a splice. A stave is a *run* of consecutive stave lines,
+ * so removing the prose between two staves would leave their lines adjacent and
+ * silently weld them into one twelve-string stave. When the cut would join two
+ * staves, a blank line stays behind in place of what was removed.
+ */
+export function removeLines(content: string, from: number, count: number): string {
+  const all = content.split(/\r?\n/);
+  const joins = STAVE_LINE.test(all[from - 1] ?? "") && STAVE_LINE.test(all[from + count] ?? "");
+  return replaceLines(content, from, count, joins ? [""] : []);
 }

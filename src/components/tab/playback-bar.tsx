@@ -1,15 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CELL_WIDTH, COLUMNS_PER_BAR } from "@/lib/tab/grid";
-
-/**
- * Characters in a bar. `COLUMNS_PER_BAR` counts notation positions and the
- * player counts characters, so the two only agree once multiplied — dividing a
- * character column by a position count made the counter claim three bars for a
- * two-bar stave.
- */
-const CHARS_PER_BAR = COLUMNS_PER_BAR * CELL_WIDTH;
+import { barAtColumn, type ParsedTab } from "@/lib/tab/parse-notes";
 
 /** A control that is only shown when the screen has something to do with it. */
 type Toggle = { on: boolean; toggle: () => void };
@@ -27,7 +19,7 @@ export function PlaybackBar({
   playing,
   bpm,
   column,
-  totalColumns,
+  parsed,
   toggle,
   setBpm,
   focus,
@@ -37,14 +29,19 @@ export function PlaybackBar({
   playing: boolean;
   bpm: number;
   column: number;
-  totalColumns: number;
+  /**
+   * The parse, not a column total: only it knows where the bars are. A bar is
+   * `COLUMNS_PER_BAR` notation positions, and a stave line holds characters
+   * that are not positions — the string label and the bar lines — so no
+   * division of a character count can land on a bar boundary.
+   */
+  parsed: ParsedTab;
   toggle: () => void;
   setBpm: (next: (prev: number) => number) => void;
   focus?: Toggle;
   children?: ReactNode;
 }) {
-  const totalBars = Math.max(1, Math.ceil(totalColumns / CHARS_PER_BAR));
-  const currentBar = column < 0 ? 0 : Math.min(totalBars, Math.floor(column / CHARS_PER_BAR) + 1);
+  const currentBar = barAtColumn(parsed, column);
 
   return (
     <div className="fixed right-0 bottom-0 left-0 z-[6] flex flex-wrap items-center gap-5 border-term-line border-t bg-term-panel px-[22px] py-2.5 text-[12px]">
@@ -61,7 +58,7 @@ export function PlaybackBar({
             {playing ? "■ stop" : "▶ play"}
           </button>
           <span className="text-term-dim">
-            bar <span className="text-term-fg">{currentBar}</span> / {totalBars}
+            bar <span className="text-term-fg">{currentBar}</span> / {parsed.totalBars}
           </span>
           <span className="flex items-center gap-2 text-term-dim">
             <button type="button" onClick={() => setBpm((b) => b - 4)} className="px-1">

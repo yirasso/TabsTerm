@@ -10,24 +10,23 @@ A|--3
 E|-----------`;
 
 /** A stave with frets on it, which is what makes a tab playable. */
-const PLAYABLE = `[intro]
-e|0-------3-------7-------12------|
+const PLAYABLE = `e|0-------3-------7-------12------|
 B|--------------------------------|
 G|--------------------------------|
 D|--------------------------------|
 A|--------------------------------|
 E|--------------------------------|`;
 
-/** Two sections, so removing one has to leave the other standing. */
-const TWO_SECTIONS = `[intro]
-e|-----------
+/** Two staves and a line of prose, so each has to be removable on its own. */
+const TWO_STAVES = `e|-----------
 B|-----------
 G|-----------
 D|-----------
 A|-----------
 E|-----------
 
-[verse]
+play it softly
+
 e|-----------
 B|-----------
 G|-----------
@@ -252,32 +251,36 @@ test("arrows move between positions and backspace clears one", async ({ page }) 
   await expect(page.getByRole("button", cell(2, 2, 3))).toHaveCount(0);
 });
 
-test("a section can be renamed, which needs no text box", async ({ page }) => {
-  await openWith(page, TWO_SECTIONS);
-
-  // With the grid taking every click there was nowhere to put a cursor, so a
-  // mistyped section name was unreachable for the life of the tab.
-  await page.getByLabel("section name").first().fill("Chorus");
-
-  await expect.poll(() => content(page)).toContain("[Chorus]");
-  await expect.poll(() => content(page)).not.toContain("[intro]");
+test("there are no sections to write", async ({ page }) => {
+  await page.goto("/new");
+  await expect(page.getByRole("button", { name: "+ section" })).toHaveCount(0);
 });
 
-test("a section and a stave can each be removed on their own", async ({ page }) => {
-  await openWith(page, TWO_SECTIONS);
+test("a stave and a line of prose can each be removed on their own", async ({ page }) => {
+  await openWith(page, TWO_STAVES);
 
   const staves = () => content(page).then((t) => staveLines(t).length);
   expect(await staves()).toBe(12);
 
-  // Removing the label leaves its stave; they are separate blocks and the
-  // remove control belongs to whichever one you clicked.
-  await page.getByRole("button", { name: "remove section" }).first().click();
-  await expect.poll(() => content(page)).not.toContain("[intro]");
+  // The remove control belongs to whichever block you clicked, so taking the
+  // prose out leaves both staves standing.
+  await page.getByRole("button", { name: "remove text" }).click();
+  await expect.poll(() => content(page)).not.toContain("play it softly");
   await expect.poll(staves).toBe(12);
 
   await page.getByRole("button", { name: "remove stave" }).first().click();
   await expect.poll(staves).toBe(6);
-  await expect.poll(() => content(page)).toContain("[verse]");
+});
+
+test("two staves added in a row stay two staves", async ({ page }) => {
+  await page.goto("/new");
+  await page.getByRole("button", { name: "+ stave" }).click();
+  await page.getByRole("button", { name: "+ stave" }).click();
+
+  // Without a blank line between them the parser reads one twelve-string stave,
+  // which falls back to a six-string tuning and plays half of itself.
+  await expect(page.getByRole("button", { name: "remove stave" })).toHaveCount(2);
+  await expect.poll(() => content(page).then(staveLines)).toHaveLength(12);
 });
 
 test("the editor plays what is being written, and walks a cursor over it", async ({ page }) => {
