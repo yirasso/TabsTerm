@@ -1,67 +1,82 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { browserSupabase } from "@/lib/supabase/browser";
+import { hasAccounts } from "@/lib/supabase/config";
 import { useSession } from "@/stores/session";
 import { useUi } from "@/stores/ui";
 
 /**
- * The design's mock account flow. Validation and "session" are entirely
- * client-side; nothing is transmitted or persisted anywhere.
+ * The account modal.
+ *
+ * With OAuth there is nothing to type and nothing to choose: no email, no
+ * password, no handle, and no login/signup pair — for someone who has never
+ * been here those are the same door. What is left is one action, which is why
+ * this screen is a sentence and a button rather than a form.
  */
 export function AuthModal() {
   const closeAuth = useUi((s) => s.closeAuth);
-  const { user, login, logout } = useSession();
+  const user = useSession((s) => s.user);
 
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
-  const [handle, setHandle] = useState("");
+  // Set by `AuthReturn` when the exchange failed, so the failure lands
+  // somewhere a person can see instead of quietly leaving them signed out.
+  const returnedError = useUi((s) => s.authError);
+  const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
-  const emailRef = useRef<HTMLInputElement>(null);
+
+  const close = () => closeAuth();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        closeAuth();
+        close();
       }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [closeAuth]);
+  });
 
-  useEffect(() => {
-    const t = setTimeout(() => emailRef.current?.focus(), 40);
-    return () => clearTimeout(t);
-  }, []);
+  const signIn = async () => {
+    const supabase = browserSupabase();
+    if (!supabase) return;
 
-  const submit = () => {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("err: email malformed");
-    if (pass.length < 8) return setError("err: passwd needs 8+ chars");
-    if (mode === "signup" && !/^[a-z0-9._-]{3,}$/.test(handle.trim()))
-      return setError("err: handle must be lowercase, 3+ chars");
-    login({
-      email: email.trim(),
-      handle: handle.trim() || (email.trim().split("@")[0] ?? "user"),
+    setWorking(true);
+    setError("");
+
+    // Come back to the page they were reading, not to the home screen.
+    const next = `${window.location.pathname}${window.location.search}`;
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+
+    const { error: failure } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
     });
-    closeAuth();
-  };
 
-  const onFieldKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      submit();
+    // Reached only if the redirect never happened; otherwise the page is gone.
+    if (failure) {
+      setWorking(false);
+      setError(`err: ${failure.message}`);
     }
   };
 
-  const authCmd = user ? "whoami" : mode === "signup" ? "auth signup" : "auth login";
+  const signOut = async () => {
+    const supabase = browserSupabase();
+    if (!supabase) return;
+    setWorking(true);
+    await supabase.auth.signOut();
+    setWorking(false);
+    close();
+  };
+
+  const command = user ? "whoami" : "auth login";
 
   return (
     <div className="fixed inset-0 z-[22] flex items-start justify-center pt-[16vh]">
       <button
         type="button"
         aria-label="close"
-        onClick={closeAuth}
+        onClick={close}
         className="tt-overlay absolute inset-0 cursor-default"
       />
       <div
@@ -72,130 +87,65 @@ export function AuthModal() {
       >
         <div className="flex items-baseline gap-2.5 border-b border-term-line px-3.5 py-[11px]">
           <span className="text-term-accent">$</span>
-          <span className="text-[12px] text-term-dim">{authCmd}</span>
+          <span className="text-[12px] text-term-dim">{command}</span>
           <span className="flex-1" />
           <button
             type="button"
-            onClick={closeAuth}
+            onClick={close}
             className="whitespace-nowrap text-[11px] text-term-faint"
           >
             esc
           </button>
         </div>
 
-        {user ? (
-          <div className="px-3.5 pb-3.5 pt-4">
-            <pre className="mb-3.5 whitespace-pre-wrap text-[12px] leading-[1.8] text-term-dim">{`session   active
-user      ${user.email}
-plan      free`}</pre>
-            <button
-              type="button"
-              onClick={() => {
-                logout();
-                closeAuth();
-              }}
-              className="w-full border border-term-line px-3 py-2 text-center text-[12px] hover:border-term-accent hover:text-term-accent"
-            >
-              logout
-            </button>
-          </div>
-        ) : (
-          <div className="p-3.5">
-            <div className="mb-4 flex border border-term-line text-[12px]">
+        <div className="px-3.5 pt-4 pb-3.5">
+          {!hasAccounts ? (
+            <pre className="whitespace-pre-wrap text-[12px] text-term-dim leading-[1.9]">
+              {`this build has no account server configured.
+
+  · your tabs live in this browser, and stay there
+  · everything works — they just do not follow you`}
+            </pre>
+          ) : user === undefined ? (
+            <p className="text-[12px] text-term-faint">checking…</p>
+          ) : user ? (
+            <>
+              <pre className="mb-3.5 whitespace-pre-wrap text-[12px] text-term-dim leading-[1.8]">{`session   active
+user      ${user.email ?? "—"}
+handle    @${user.handle}`}</pre>
               <button
                 type="button"
-                onClick={() => {
-                  setMode("login");
-                  setError("");
-                }}
-                className={`flex-1 py-1.5 text-center ${mode === "login" ? "tt-selected text-term-fg" : "text-term-faint"}`}
+                onClick={signOut}
+                disabled={working}
+                className="w-full border border-term-line px-3 py-2 text-center text-[12px] hover:border-term-accent hover:text-term-accent disabled:text-term-faint"
               >
-                login
+                {working ? "…" : "logout"}
               </button>
+            </>
+          ) : (
+            <>
+              <pre className="mb-4 whitespace-pre-wrap text-[12px] text-term-dim leading-[1.9]">
+                {`sign in with google to keep your tabs in an account
+instead of in this browser.
+
+  · they follow you between devices
+  · nobody else ever sees them`}
+              </pre>
               <button
                 type="button"
-                onClick={() => {
-                  setMode("signup");
-                  setError("");
-                }}
-                className={`flex-1 py-1.5 text-center ${mode === "signup" ? "tt-selected text-term-fg" : "text-term-faint"}`}
+                onClick={signIn}
+                disabled={working}
+                className="w-full border border-term-fg px-3 py-[9px] text-center text-[12px] hover:border-term-accent hover:text-term-accent disabled:text-term-faint"
               >
-                signup
+                {working ? "opening google…" : "continue with google →"}
               </button>
-            </div>
+            </>
+          )}
 
-            <div className="flex flex-col gap-3">
-              <label className="flex items-baseline gap-[9px] border-b border-term-line pb-1.5">
-                <span className="w-16 flex-none text-[11px] text-term-faint">email</span>
-                <input
-                  ref={emailRef}
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError("");
-                  }}
-                  onKeyDown={onFieldKey}
-                  placeholder="you@domain.tld"
-                  spellCheck={false}
-                  autoComplete="off"
-                  className="min-w-0 flex-1 border-0 bg-transparent text-[13px] caret-term-accent outline-none"
-                />
-              </label>
-              <label className="flex items-baseline gap-[9px] border-b border-term-line pb-1.5">
-                <span className="w-16 flex-none text-[11px] text-term-faint">passwd</span>
-                <input
-                  value={pass}
-                  onChange={(e) => {
-                    setPass(e.target.value);
-                    setError("");
-                  }}
-                  onKeyDown={onFieldKey}
-                  type="password"
-                  placeholder="••••••••"
-                  autoComplete="off"
-                  className="min-w-0 flex-1 border-0 bg-transparent text-[13px] caret-term-accent outline-none"
-                />
-              </label>
-              {mode === "signup" && (
-                <label className="flex items-baseline gap-[9px] border-b border-term-line pb-1.5">
-                  <span className="w-16 flex-none text-[11px] text-term-faint">handle</span>
-                  <input
-                    value={handle}
-                    onChange={(e) => {
-                      setHandle(e.target.value);
-                      setError("");
-                    }}
-                    onKeyDown={onFieldKey}
-                    placeholder="lowercase, no spaces"
-                    spellCheck={false}
-                    autoComplete="off"
-                    className="min-w-0 flex-1 border-0 bg-transparent text-[13px] caret-term-accent outline-none"
-                  />
-                </label>
-              )}
-            </div>
-
-            <div className="mt-2.5 min-h-[17px] text-[11px] text-term-accent">{error}</div>
-
-            <button
-              type="button"
-              onClick={submit}
-              className="mt-1.5 w-full border border-term-fg px-3 py-[9px] text-center text-[12px] hover:border-term-accent hover:text-term-accent"
-            >
-              {mode === "signup" ? "create account →" : "sign in →"}
-            </button>
-
-            <div className="mt-3.5 flex flex-wrap gap-3.5 text-[11px] text-term-faint">
-              <span className="whitespace-nowrap">
-                <span className="text-term-dim">enter</span> submit
-              </span>
-              <span className="whitespace-nowrap">
-                <span className="text-term-dim">tab</span> next field
-              </span>
-              <span className="whitespace-nowrap">no email confirmation</span>
-            </div>
+          <div className="mt-2.5 min-h-[17px] text-[11px] text-term-accent">
+            {error || returnedError || ""}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

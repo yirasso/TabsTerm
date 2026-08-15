@@ -6,7 +6,7 @@ The UI implements the **TabsTerm** design from Claude Design (project
 "TabsTerm – Plataforma de tabs", `TabsTerm.dc.html`): a text prompt with ghost-typing,
 four themes (paper / crt / amber / mono) with CRT scanlines, slash commands,
 keyboard-first navigation, and a tab view with a playback bar
-(play / bpm / focus).
+(play / bar counter / bpm).
 
 ## Stack
 
@@ -21,6 +21,7 @@ keyboard-first navigation, and a tab view with a playback bar
 | Theming       | next-themes                                   | `data-theme` on `<html>`: paper / crt / amber / mono |
 | Validation    | Zod v4                                        | Env, API boundaries, upstream responses |
 | Client state  | Zustand                                       | Mock account, modal state, and local drafts |
+| Accounts      | Supabase (`@supabase/ssr`), optional          | OAuth sign-in + owner-only Postgres; absent, the app runs on localStorage |
 | Motion        | Motion (Framer) + GSAP + Lenis                | Layout/gesture animation, timelines, smooth scroll |
 | 3D            | three + React Three Fiber + drei + postprocessing | Ready for an awwwards-grade WebGL layer |
 | Lint / format | Biome                                         | One fast binary instead of ESLint + Prettier |
@@ -37,9 +38,16 @@ keyboard-first navigation, and a tab view with a playback bar
 npm run dev          # dev server on :3000
 npm run build        # production build
 npm run check        # typecheck + lint + unit tests
-npm run test:e2e     # Playwright (boots its own dev server)
+npm run test:e2e     # Playwright (boots its own dev server, pinned to no accounts)
 npm run lint:fix     # Biome autofix + import sorting
 ```
+
+```bash
+E2E_ACCOUNTS=1 npx playwright test e2e/accounts.spec.ts
+```
+
+Runs the account rules against whatever `.env.local` points at, instead of the empty
+Supabase configuration the committed suite is pinned to. Skipped without the flag.
 
 ## Architecture
 
@@ -47,7 +55,10 @@ npm run lint:fix     # Biome autofix + import sorting
 src/
   app/
     page.tsx                        the terminal (home / results screens)
-    song/[provider]/[id]/page.tsx   tab view (server-fetched, no HTTP hop)
+    song/[provider]/[id]/page.tsx   tab view (server-fetched; `mine` reads localStorage)
+    new/page.tsx                    the editor — `?id=` resumes, and is where `edit` lands
+                                    (needs an account where one is configured)
+    auth/callback/route.ts          trades the OAuth code for a session cookie
     api/search/route.ts             GET /api/search?q=
     api/tabs/route.ts               GET /api/tabs — the whole library
     api/tab/[provider]/[id]/route.ts
@@ -58,9 +69,12 @@ src/
     tab/                            tab view, playback bar, block renderer
   stores/                           zustand: session (mock user) + ui + drafts
   hooks/                            client data hooks
+  proxy.ts                          refreshes the Supabase session before rendering
   lib/
     env, http, cn/slugify
     tabs/contract.ts                domain model + Zod schemas + TabProvider interface
+    supabase/                       config (optional) + browser / `server-only` clients
+supabase/migrations/                schema; owner-only RLS from the first line
   server/tabs/                      `server-only`; imports the contract, never the reverse
     registry.ts                     fan-out, dedupe, graceful degradation
     providers/
@@ -71,7 +85,7 @@ src/
 ### Keyboard
 
 `enter` run · `tab` complete (`shift+tab` backwards) · `↑ ↓` / `j k` move ·
-`esc` back · on a tab: `space` play · `f` focus ·
+`esc` back · on a tab: `space` play · `e` edit (your own tabs) ·
 `t` theme (anywhere).
 
 Slash commands: `/new`, `/list`, `/rand`, `/man`, `/theme`. None takes an argument —

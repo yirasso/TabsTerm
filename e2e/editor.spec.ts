@@ -17,6 +17,9 @@ D|--------------------------------|
 A|--------------------------------|
 E|--------------------------------|`;
 
+/** Enough staves that the cursor has to walk off the bottom of the window. */
+const LONG = [PLAYABLE, PLAYABLE, PLAYABLE, PLAYABLE].join("\n\n");
+
 /** Two staves and a line of prose, so each has to be removable on its own. */
 const TWO_STAVES = `e|-----------
 B|-----------
@@ -112,8 +115,9 @@ test("a ragged tab squares itself up when touched, and can be saved and found", 
   expect(lines[0]).toContain("12");
 
   await page.getByLabel("title").fill("Test Riff");
-  await page.getByRole("button", { name: "save" }).click();
-  await expect(page).toHaveURL(/\/draft\/[a-z0-9]+/);
+  await page.getByRole("button", { name: "publish" }).click();
+  // Publishing opens the tab on the same screen the catalog opens on.
+  await expect(page).toHaveURL(/\/song\/mine\/[a-z0-9]+/);
   await expect(page.getByRole("heading", { name: "Test Riff" })).toBeVisible();
   // A stave means the player has notes, so the bar must offer to play them.
   await expect(page.getByRole("button", { name: "▶ play" })).toBeVisible();
@@ -161,15 +165,41 @@ test("the stave helper inserts a square grid", async ({ page }) => {
   await expect(page.getByText("grid is square.")).toBeVisible();
 });
 
-test("saving is refused until there is something to save", async ({ page }) => {
+test("publishing is refused until there is something to publish", async ({ page }) => {
   await page.goto("/new");
-  await expect(page.getByRole("button", { name: "save" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "publish" })).toBeDisabled();
 
   await page.getByLabel("title").fill("Only a title");
-  await expect(page.getByRole("button", { name: "save" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "publish" })).toBeDisabled();
 
   await page.getByRole("button", { name: "+ stave" }).click();
-  await expect(page.getByRole("button", { name: "save" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "publish" })).toBeEnabled();
+});
+
+test("a published tab is edited and updated, never published twice", async ({ page }) => {
+  await openWith(page, PLAYABLE);
+
+  await page.getByLabel("title").fill("Round Trip");
+  await page.getByRole("button", { name: "publish" }).click();
+  await expect(page).toHaveURL(/\/song\/mine\/seed/);
+
+  // The way back into writing is on the playback bar, where every other control
+  // for the tab in front of you lives.
+  await page.getByRole("button", { name: "[e] edit" }).click();
+  await expect(page).toHaveURL(/\/new\?id=seed/);
+
+  // Same screen, different job: this tab exists now, so the action updates it.
+  await expect(page.getByRole("button", { name: "update" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "publish" })).toHaveCount(0);
+  await expect(page.getByLabel("title")).toHaveValue("Round Trip");
+
+  await page.getByRole("button", { name: "update" }).click();
+  await expect(page).toHaveURL(/\/song\/mine\/seed/);
+});
+
+test("there is no draft screen to land on", async ({ page }) => {
+  const response = await page.goto("/draft/seed");
+  expect(response?.status()).toBe(404);
 });
 
 test("the controls that could only be on are gone", async ({ page }) => {
@@ -308,6 +338,31 @@ test("the editor plays what is being written, and walks a cursor over it", async
   await expect(page.locator('[data-testid="tab-cursor"]')).toHaveCount(0);
 });
 
+test("the page follows the cursor from one stave to the next", async ({ page }) => {
+  // Short enough that the second stave is certainly below the fold, so the
+  // scroll has to happen rather than being merely allowed to.
+  await page.setViewportSize({ width: 1280, height: 400 });
+  await openWith(page, LONG);
+
+  await page.getByRole("button", { name: "▶ play" }).click();
+
+  // Measured after the editor has mounted its staves. Asked any earlier it is
+  // nought — the draft loads in an effect — and a threshold off nought is a
+  // test that cannot fail.
+  const furthest = await page.evaluate(
+    () => document.documentElement.scrollHeight - window.innerHeight,
+  );
+
+  // Most of the way down the page, not merely off nought: the broken version
+  // scrolled once when playback started — which also moves the page, because
+  // the first stave sits below the title — and then let the cursor walk out of
+  // the window for the rest of the piece. Only a scroll that keeps following
+  // reaches the last stave.
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY), { timeout: 20_000 })
+    .toBeGreaterThan(furthest * 0.6);
+});
+
 test("the editor's tempo control changes the tempo", async ({ page }) => {
   await openWith(page, PLAYABLE);
 
@@ -316,9 +371,9 @@ test("the editor's tempo control changes the tempo", async ({ page }) => {
   await expect(page.getByText("100 bpm")).toBeVisible();
 });
 
-test("a draft from another browser is explained, not crashed", async ({ page }) => {
-  await page.goto("/draft/doesnotexist");
-  await expect(page.getByText(/no such draft in this browser/i)).toBeVisible();
+test("a tab from another browser is explained, not crashed", async ({ page }) => {
+  await page.goto("/song/mine/doesnotexist");
+  await expect(page.getByText(/no such tab in this browser/i)).toBeVisible();
   await expect(page.getByRole("link", { name: /write a new one/i })).toBeVisible();
 });
 

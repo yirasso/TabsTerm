@@ -3,9 +3,6 @@
 import type { ReactNode } from "react";
 import { barAtColumn, type ParsedTab } from "@/lib/tab/parse-notes";
 
-/** A control that is only shown when the screen has something to do with it. */
-type Toggle = { on: boolean; toggle: () => void };
-
 /**
  * The bar along the bottom that drives playback.
  *
@@ -22,7 +19,6 @@ export function PlaybackBar({
   parsed,
   toggle,
   setBpm,
-  focus,
   children,
 }: {
   playable: boolean;
@@ -38,7 +34,6 @@ export function PlaybackBar({
   parsed: ParsedTab;
   toggle: () => void;
   setBpm: (next: (prev: number) => number) => void;
-  focus?: Toggle;
   children?: ReactNode;
 }) {
   const currentBar = barAtColumn(parsed, column);
@@ -69,15 +64,6 @@ export function PlaybackBar({
               +
             </button>
           </span>
-          {focus && (
-            <button
-              type="button"
-              onClick={focus.toggle}
-              className={focus.on ? "text-term-fg" : "text-term-faint"}
-            >
-              focus {focus.on ? "on" : "off"}
-            </button>
-          )}
         </>
       ) : (
         <span className="text-term-faint">no stave to play — text only</span>

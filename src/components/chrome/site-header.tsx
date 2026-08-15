@@ -40,9 +40,12 @@ export function SiteHeader() {
           >
             theme: {mounted ? theme : "paper"}
           </button>
+          {/* `openAuth` is wrapped rather than passed: it takes an optional
+              reason, and handing it the click handler's event would file a
+              MouseEvent as one. */}
           <button
             type="button"
-            onClick={openAuth}
+            onClick={() => openAuth()}
             className="whitespace-nowrap border border-term-line px-2 py-[3px] hover:border-term-accent hover:text-term-fg"
           >
             {user ? `@${user.handle}` : "account"}

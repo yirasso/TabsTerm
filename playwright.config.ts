@@ -22,7 +22,27 @@ export default defineConfig({
     // make these assertions depend on live third-party results.
     reuseExistingServer: false,
     timeout: 120_000,
-    // Pin to the in-repo library so e2e is deterministic and works offline.
-    env: { TAB_PROVIDERS: "local" },
+    /**
+     * Pin to the in-repo library so e2e is deterministic and works offline.
+     *
+     * The Supabase pair is pinned *empty* for the same reason. Whoever runs
+     * this may have accounts configured in `.env.local`, and the suite would
+     * then quietly test a different app than it does on a clean clone — and
+     * reach a real server while doing it. Empty is a configuration the app
+     * understands: no accounts, tabs in the browser.
+     *
+     * `E2E_ACCOUNTS=1` lets `.env.local` through, for running against a real
+     * project on purpose. Nothing in the committed suite depends on it: the
+     * sign-in itself cannot be driven headlessly through Google's consent
+     * screen, and pretending otherwise would be a test that only ever passed.
+     */
+    env:
+      process.env.E2E_ACCOUNTS === "1"
+        ? { TAB_PROVIDERS: "local" }
+        : {
+            TAB_PROVIDERS: "local",
+            NEXT_PUBLIC_SUPABASE_URL: "",
+            NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
+          },
   },
 });

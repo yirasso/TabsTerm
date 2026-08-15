@@ -2,16 +2,30 @@
 
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { CommandLine } from "@/components/chrome/command-line";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
+import { useFollowCursor } from "@/hooks/use-follow-cursor";
 import { useTabPlayback } from "@/hooks/use-tab-playback";
 import type { Tab } from "@/lib/tabs/contract";
 import { anyModalOpen } from "@/stores/ui";
 import { PlaybackBar } from "./playback-bar";
 import { TabRender } from "./tab-render";
 
-export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
+export function TabView({
+  tab,
+  backHref,
+  editHref,
+}: {
+  tab: Tab;
+  backHref: Route;
+  /**
+   * Where writing this one continues. Only a tab of your own has one — a
+   * catalog tab is not yours to change — and it is what makes reading and
+   * writing two modes of the same tab rather than two destinations.
+   */
+  editHref?: Route;
+}) {
   const router = useRouter();
   const { cycle } = useThemeCycle();
 
@@ -21,25 +35,22 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
     tab.capo ?? 0,
   );
 
-  const [focusMode, setFocusMode] = useState(false);
-  const activeStaveRef = useRef<HTMLDivElement>(null);
+  const activeStaveRef = useFollowCursor(parsed.blocks, playing ? column : -1);
 
+  // Both of these leave the page, and leaving has to silence the guitar: the
+  // audio graph outlives the component that started it.
   const back = () => {
     stop();
     router.push(backHref);
   };
 
-  // Follow the cursor by scrolling to whichever stave holds it. Not optional:
-  // a cursor you cannot see is not a cursor.
-  useEffect(() => {
-    if (!playing) return;
-    const el = activeStaveRef.current;
-    if (!el) return;
-    const y = el.getBoundingClientRect().top + window.scrollY - 130;
-    window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-  }, [playing]);
+  const edit = () => {
+    if (!editHref) return;
+    stop();
+    router.push(editHref);
+  };
 
-  // space play · f focus · t theme · esc back
+  // space play · e edit · t theme · esc back
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (anyModalOpen()) return;
@@ -53,7 +64,7 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
         }
         return;
       }
-      if (e.key === "f") setFocusMode((v) => !v);
+      if (e.key === "e" && editHref) return edit();
       if (e.key === "t") cycle();
     };
     window.addEventListener("keydown", onKey);
@@ -73,14 +84,10 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
           positions at three characters each, plus the string label and the
           border this page draws down the left of it. A narrower reading column
           looked calmer and made every tab scroll sideways, which is not calm. */}
-      <main
-        className={`mx-auto px-[22px] pb-[140px] pt-7 ${focusMode ? "max-w-[1100px]" : "max-w-[980px]"}`}
-      >
-        {!focusMode && (
-          <CommandLine>
-            open {tab.provider}/{tab.id}
-          </CommandLine>
-        )}
+      <main className="mx-auto max-w-[980px] px-[22px] pb-[140px] pt-7">
+        <CommandLine>
+          open {tab.provider}/{tab.id}
+        </CommandLine>
 
         {/* The song is what this screen is about, so it takes the display step
             and the path above it drops to chrome. */}
@@ -97,9 +104,7 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
           </span>
         </div>
 
-        {!focusMode && tab.license && (
-          <div className="mb-[26px] text-[11px] text-term-faint">{tab.license}</div>
-        )}
+        {tab.license && <div className="mb-[26px] text-[11px] text-term-faint">{tab.license}</div>}
 
         {parsed.blocks.length > 0 ? (
           <TabRender
@@ -122,9 +127,13 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
         parsed={parsed}
         toggle={toggle}
         setBpm={setBpm}
-        focus={{ on: focusMode, toggle: () => setFocusMode((v) => !v) }}
       >
         <span className="flex-1" />
+        {editHref && (
+          <button type="button" onClick={edit} className="text-term-dim hover:text-term-accent">
+            [e] edit
+          </button>
+        )}
         <button type="button" onClick={back} className="text-term-faint hover:text-term-fg">
           [esc] back
         </button>

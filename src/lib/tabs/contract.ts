@@ -96,6 +96,21 @@ export interface TabProvider {
   random?(signal?: AbortSignal): Promise<Tab | null>;
 }
 
+/**
+ * The provider id a tab written in this browser carries.
+ *
+ * It is deliberately *not* a `TabProvider`: there is nothing on the server to
+ * ask, because the tab is in localStorage. It exists so someone's own tab has
+ * the same URL shape as a catalog one — `/song/mine/2a3fk1` — and the route can
+ * tell, from the id alone, that this one is read on the client. That is what
+ * lets there be a single screen for opening a tab instead of one per storage.
+ *
+ * It lives here rather than beside the store because the server route has to
+ * read it, and the store is a `"use client"` module: importing a constant out
+ * of one from a server component gets you a client reference, not the string.
+ */
+export const MINE_PROVIDER = "mine";
+
 /** Stable cross-provider key: `local:greensleeves`. Used in URLs. */
 export function songKey(song: Pick<SongSummary, "provider" | "id">) {
   return `${song.provider}:${song.id}`;

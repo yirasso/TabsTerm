@@ -202,6 +202,25 @@ export function barAtColumn(parsed: ParsedTab, column: number): number {
 }
 
 /**
+ * The stave the cursor is standing on, or null when playback is stopped.
+ *
+ * One answer for two questions that must never disagree: which stave draws the
+ * cursor, and which stave the page scrolls to keep in view. Asking it twice, in
+ * two components, is how a cursor ends up drawn on one stave while the page
+ * follows another.
+ */
+export function staveAtColumn(blocks: TabBlock[], column: number): TabBlock | null {
+  if (column < 0) return null;
+
+  for (const block of blocks) {
+    if (block.kind !== "stave") continue;
+    const local = column - block.columnOffset;
+    if (local >= 0 && local < block.width) return block;
+  }
+  return null;
+}
+
+/**
  * `capo` shifts every note up by that many frets. Tablature is written relative
  * to the capo — that is the whole point of one, the shapes stay in first
  * position — so the numbers on the page are not the pitches that sound, and

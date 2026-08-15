@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import { AdoptLocalTabs } from "@/components/chrome/adopt-local-tabs";
+import { AuthReturn } from "@/components/chrome/auth-return";
+import { SessionSync } from "@/components/chrome/session-sync";
 import { SiteHeader } from "@/components/chrome/site-header";
 import { env } from "@/lib/env";
 import { Providers } from "./providers";
@@ -36,6 +39,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <Providers>
           <div className="tt-scanlines" aria-hidden />
+          {/* None of these render anything: who is signed in, a sign-in that
+              came back broken, and moving a browser's tabs into the account it
+              now has. */}
+          <SessionSync />
+          <AuthReturn />
+          <AdoptLocalTabs />
           <SiteHeader />
           {children}
         </Providers>

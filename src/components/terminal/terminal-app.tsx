@@ -9,10 +9,11 @@ import { CommandLine } from "@/components/chrome/command-line";
 import { useThemeCycle } from "@/components/chrome/use-theme-cycle";
 import type { Quote } from "@/data/quotes";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useLibrary } from "@/hooks/use-library";
 import { useSongSearch } from "@/hooks/use-song-search";
 import type { SongSummary } from "@/lib/tabs/contract";
 import { slugify } from "@/lib/utils";
-import { DRAFT_PROVIDER, draftToSummary, useDrafts } from "@/stores/drafts";
+import { draftToSummary } from "@/stores/drafts";
 import { useSession } from "@/stores/session";
 import { anyModalOpen, useUi } from "@/stores/ui";
 import { COMMANDS, LEAVES_PROMPT, parseCommand, searchTermFor } from "./commands";
@@ -65,25 +66,30 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
 
   const isCmd = query.trim().startsWith("/");
 
-  // Drafts are in localStorage, so the server knows nothing about them. Merge
-  // them in here, ahead of the catalog — someone looking for a tab they just
-  // wrote should find it first.
-  const drafts = useDrafts((s) => s.drafts);
-  const draftHits = useMemo(() => {
-    const published = Object.values(drafts).filter((d) => d.published);
+  /**
+   * Your own tabs are merged in here, ahead of the catalog — someone looking
+   * for a tab they just wrote should find it first. Unpublished ones are left
+   * out: they have never left the editor.
+   *
+   * They are matched on the client because that is where they already are, in
+   * an account this browser is signed into or in its own storage. They must
+   * never travel through `searchAllProviders`: that fans out across providers
+   * and takes its `provider` from the client, so a person's library would be
+   * one query parameter away from anyone.
+   */
+  const library = useLibrary();
+  const mine = useMemo(() => {
+    const published = library.tabs.filter((tab) => tab.published);
     if (listing) return published.map(draftToSummary);
 
     const needle = slugify(term);
     if (!needle) return [];
     return published
-      .filter((d) => slugify(`${d.title} ${d.artist}`).includes(needle))
+      .filter((tab) => slugify(`${tab.title} ${tab.artist}`).includes(needle))
       .map(draftToSummary);
-  }, [drafts, term, listing]);
+  }, [library.tabs, term, listing]);
 
-  const filteredResults = useMemo(
-    () => [...draftHits, ...(data?.results ?? [])],
-    [draftHits, data],
-  );
+  const filteredResults = useMemo(() => [...mine, ...(data?.results ?? [])], [mine, data]);
   const degraded = data?.degraded ?? [];
 
   // What the area under the prompt shows: the day's quote when nothing is
@@ -101,11 +107,9 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
       ? 0
       : songSuggestions.length;
 
+  // Every tab opens at the same address, including your own: `mine` is a
+  // provider id the song route resolves on the client instead of the server.
   const songHref = (s: Pick<SongSummary, "provider" | "id">, from: Screen) => {
-    // Drafts live in this browser, so they get a client-rendered route of their
-    // own rather than one the server would fail to resolve.
-    if (s.provider === DRAFT_PROVIDER) return `/draft/${encodeURIComponent(s.id)}` as Route;
-
     const qs = new URLSearchParams();
     if (query) qs.set("q", query);
     if (from !== "home") qs.set("view", from);

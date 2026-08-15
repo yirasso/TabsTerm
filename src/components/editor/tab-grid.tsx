@@ -12,7 +12,7 @@ import {
   writeStave,
 } from "@/lib/tab/cells";
 import { CELL_WIDTH } from "@/lib/tab/grid";
-import type { TabBlock } from "@/lib/tab/parse-notes";
+import { staveAtColumn, type TabBlock } from "@/lib/tab/parse-notes";
 
 /**
  * Where a cell starts in its raw line.
@@ -144,6 +144,10 @@ export function TabGrid({
     </button>
   );
 
+  // Which stave holds the cursor is decided once, by the parse, so the stave
+  // the page scrolls to is the stave the cursor is drawn on.
+  const activeId = staveAtColumn(blocks, column)?.id ?? null;
+
   return (
     <div className="tab-content text-[15px] leading-[1.85]">
       {blocks.map((block) => {
@@ -162,7 +166,7 @@ export function TabGrid({
         const width = grid.cells[0]?.length ?? 0;
         const bars = new Set(grid.bars);
         const local = column - block.columnOffset;
-        const holdsCursor = local >= 0 && local < block.width;
+        const holdsCursor = block.id === activeId;
 
         return (
           // The control sits above the stave rather than beside it, because a

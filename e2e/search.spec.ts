@@ -172,6 +172,36 @@ test("the digital guitar plays a tab and walks a cursor across it", async ({ pag
   await expect(page.locator('[data-testid="tab-cursor"]')).toHaveCount(0);
 });
 
+test("with no account server, the modal says so instead of offering a dead button", async ({
+  page,
+}) => {
+  // This is the configuration a clean clone runs in, and the one this suite is
+  // pinned to. The account button still exists, because tabs in a browser are
+  // still an answer to "where is my work" — it just has to be an honest one.
+  await page.goto("/");
+  await page.getByRole("button", { name: "account" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "account" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(/no account server configured/i)).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /continue with google/i })).toHaveCount(0);
+
+  // No password anywhere near this product any more.
+  await expect(dialog.locator('input[type="password"]')).toHaveCount(0);
+  await expect(dialog.getByText("signup", { exact: true })).toHaveCount(0);
+});
+
+test("there is no focus mode", async ({ page }) => {
+  await page.goto("/song/local/greensleeves");
+
+  // It widened the reading column past the width a stave measures and hid the
+  // path to the tab — a second way to look at one screen, for a page that has
+  // nothing on it but the tablature already.
+  await expect(page.getByRole("button", { name: /focus/ })).toHaveCount(0);
+  await page.keyboard.press("f");
+  await expect(page.getByText("open local/greensleeves")).toBeVisible();
+});
+
 test("tab completes a partial command, and cycles the whole list", async ({ page }) => {
   await page.goto("/");
   const prompt = page.getByLabel("search for a song");

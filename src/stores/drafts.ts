@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { regrid } from "@/lib/tab/grid";
-import type { SongSummary, Tab, TabType } from "@/lib/tabs/contract";
+import { MINE_PROVIDER, type SongSummary, type Tab, type TabType } from "@/lib/tabs/contract";
 
 /**
  * Tabs written in the browser, before there is a database to put them in.
@@ -20,12 +20,15 @@ export type Draft = {
   tuning: string[] | null;
   capo: number | null;
   content: string;
-  /** Set once the writer says it is ready; drafts stay out of search. */
+  /**
+   * Set once the writer publishes it. An unpublished tab is one that has never
+   * left the editor: autosave keeps it, but it stays out of search. It is also
+   * what the editor's action reads from — `publish` the first time, `update`
+   * every time after.
+   */
   published: boolean;
   updatedAt: number;
 };
-
-export const DRAFT_PROVIDER = "draft";
 
 export function emptyDraft(id: string): Draft {
   return {
@@ -45,7 +48,7 @@ export function emptyDraft(id: string): Draft {
 export function draftToTab(draft: Draft): Tab {
   return {
     id: draft.id,
-    provider: DRAFT_PROVIDER,
+    provider: MINE_PROVIDER,
     title: draft.title || "untitled",
     artist: draft.artist || "unknown",
     album: null,

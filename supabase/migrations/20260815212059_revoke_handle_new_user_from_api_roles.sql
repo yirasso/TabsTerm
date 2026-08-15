@@ -1,0 +1,11 @@
+-- The migration before this one revoked the implicit `PUBLIC` grant and changed
+-- nothing the linter could see, which is the lesson worth keeping: Supabase's
+-- default privileges grant `execute` to `anon`, `authenticated` and
+-- `service_role` *directly*, so revoking `PUBLIC` leaves all three standing.
+-- Named grants have to be revoked by name.
+--
+-- `supabase_auth_admin` keeps its grant on purpose: it is the role that inserts
+-- into `auth.users`, so it is the role the trigger fires under. Verified rather
+-- than assumed — three accounts were created after this ran, and each still got
+-- its profile, including the one whose handle had to be de-duplicated.
+revoke execute on function public.handle_new_user() from anon, authenticated;

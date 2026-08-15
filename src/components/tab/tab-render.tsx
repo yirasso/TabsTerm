@@ -1,6 +1,6 @@
 "use client";
 
-import type { TabBlock } from "@/lib/tab/parse-notes";
+import { staveAtColumn, type TabBlock } from "@/lib/tab/parse-notes";
 
 /**
  * Renders the parsed blocks, with a cursor sitting on the column being played.
@@ -21,6 +21,10 @@ export function TabRender({
   /** Attached to the stave currently playing, so autoscroll can find it. */
   activeRef?: React.RefObject<HTMLDivElement | null>;
 }) {
+  // Which stave holds the cursor is decided once, by the parse, so the bar and
+  // the page that follows it can never point at different staves.
+  const activeId = staveAtColumn(blocks, column)?.id ?? null;
+
   return (
     <div className="flex flex-col gap-[34px]">
       {blocks.map((block) => {
@@ -33,7 +37,7 @@ export function TabRender({
         }
 
         const local = column - block.columnOffset;
-        const active = local >= 0 && local < block.width;
+        const active = block.id === activeId;
 
         return (
           <div

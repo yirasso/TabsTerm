@@ -1,3 +1,12 @@
+/**
+ * Server configuration, validated once at startup so a bad value fails loudly
+ * on boot instead of quietly on the first request that needs it.
+ *
+ * The Supabase pair is deliberately not here: the browser needs those two
+ * values, and this module holds server configuration that must not be dragged
+ * into a client bundle. They live in `src/lib/supabase/config.ts`.
+ */
+
 import { z } from "zod";
 
 const csv = (fallback: string) =>

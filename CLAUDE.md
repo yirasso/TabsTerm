@@ -107,6 +107,39 @@ npm run check     # typecheck + biome + vitest
   inside the `/new` editor, so what comes out lands in a draft that already has the
   title, tuning and capo fields it needs. There is no `/listen` route; a page of its own
   meant the result had to be teleported into an editor afterwards.
+- **Autoscroll follows the cursor's stave, and that is the only thing it may watch.**
+  `useFollowCursor` (`src/hooks/use-follow-cursor.ts`) keys on the id from
+  `staveAtColumn`, so it fires exactly when the cursor crosses into a new stave. The
+  effect it replaced depended on `playing`: it ran once, scrolled to the first stave and
+  then let the cursor walk off the bottom of the window — autoscroll that only worked
+  for the opening bar. It scrolls only when the stave is not already in view, because
+  snapping every stave to the top jumps a page that had nothing wrong with it. Both the
+  reader and the editor use it, and `staveAtColumn` is also what decides which stave
+  *draws* the cursor — asked twice, the two answers drift and the page follows a stave
+  the cursor is not on.
+- **There is no focus mode.** No `f` key, no toggle on the playback bar, no wide
+  variant of the reading column: it widened `max-w-[980px]` to 1100px, which is past
+  what a stave measures, and hid the `open …` path for a screen that is already nothing
+  but tablature. A second way to look at one screen has to earn itself.
+- **There is one screen for opening a tab, and reading is where writing ends.**
+  Publishing leaves the editor for `/song/mine/<id>` — the same `TabView` the catalog
+  opens on — and that screen carries `[e] edit` back to `/new?id=<id>`. There is no
+  `/draft/[id]` route and no draft screen: a second reading screen meant a tab you wrote
+  looked different from a tab you read, for no reason a reader could name. `editHref` is
+  what the two modes hang on, and a catalog tab has none — it is not yours to change.
+- **`mine` is a provider id with no provider behind it** (`MINE_PROVIDER`, in
+  `src/lib/tabs/contract.ts`). It exists so a tab in localStorage gets the same URL shape
+  as one from the catalog, and `src/app/song/[provider]/[id]/page.tsx` branches on it to
+  hand the read to the client instead of 404ing on a tab the browser holds perfectly
+  well. It lives in the contract and not beside the store because a server component has
+  to read it, and every export of a `"use client"` module reaches the server as a client
+  reference rather than a value.
+- **`published` is what makes a tab findable, and what the editor's action reads.**
+  `publish` the first time, `update` every time after — taken from the draft as it
+  arrived, so the word cannot change under someone mid-edit. Autosave has already stored
+  the words either way; what the button really does is stop editing and open the tab.
+  Because `edit` can now reach a tab that exists, the destructive control says `delete`
+  there and `discard` on something never published.
 - **There is no reader-facing source filter.** `/api/search` still takes `?provider=`
   and `searchAllProviders` still honours it, but nothing in the UI sets one — which
   sources are searched is decided once, by the operator, in `TAB_PROVIDERS`. The `/src`
@@ -123,6 +156,72 @@ npm run check     # typecheck + biome + vitest
   this source can enumerate its own catalog. A search-only upstream implements neither,
   and `listAllProviders` / `randomTab` leave it out rather than counting it as a source
   that answered with nothing.
+- **Accounts are optional, and half-configured is an error.** `supabaseConfig`
+  (`src/lib/supabase/config.ts`) is null when neither Supabase variable is set, and the
+  app runs on localStorage exactly as it did before — which is how e2e runs and how a
+  clone with no `.env.local` builds. One variable without the other throws: falling back
+  there would run a deployment its operator believes has accounts, with everyone's tabs
+  going into a browser. The pair lives outside `src/lib/env.ts` because the browser needs
+  it and `env.ts` is server configuration.
+- **Identity comes from `getClaims()`, never `getSession()`.** A session is read out of a
+  cookie the browser wrote; only `getClaims()` verifies the signature before answering,
+  and its `sub` is what may be used as `owner`. `currentAccount()` in
+  `src/lib/supabase/server.ts` is the one place that decides this.
+- **It is `src/proxy.ts`, not `middleware.ts`.** Next 16 deprecated that convention and
+  errors if both exist; every Supabase guide still says middleware. The proxy exists to
+  refresh the token *before* rendering — a Server Component cannot set cookies, so
+  without it `serverSupabase`'s swallowed write turns into random logouts.
+- **Reading is open; writing needs an account — where there is one to have.** `/new`
+  shows `SignInToWrite` instead of the editor when Supabase is configured and nobody is
+  signed in, because a tab written without an account has nowhere to be kept: it would
+  sit in a browser, look saved, and vanish with the site data. The gate is conditional
+  on `hasAccounts` on purpose. A build with no account server has none to ask for, and
+  that is the configuration `npm run test:e2e` runs in — making the gate unconditional
+  would delete the editor's entire test coverage, since Google's consent screen cannot
+  be driven headlessly. `e2e/accounts.spec.ts` pins the gate and is skipped unless
+  `E2E_ACCOUNTS=1`. Note the gate checks `user === null`, never falsy: `undefined` means
+  the session is still being read, and turning people away during it would greet every
+  signed-in writer with a sign-in screen.
+- **`useLibrary` is where your tabs are, and no screen may know which store answered.**
+  An account when signed in, this browser when not — both real, because the second is
+  how the app worked before accounts and still works for anyone who never signs in.
+  There is no merging: a session means the account is the truth, and local tabs move
+  across once, in `AdoptLocalTabs`. Two live copies of one tab is the bug that avoids.
+- **A hook that hands back a new function every render breaks any effect that keeps a
+  timer.** `useLibrary`'s `save`, `remove` and `get` are `useCallback`ed for that reason
+  and not as tidiness: the editor autosaves from an effect with `save` in its
+  dependencies, and an unstable identity tore the timer down and restarted it before it
+  could ever fire — so nothing was written at all. React Compiler does not save you here.
+  For the same reason `NewTabScreen` resolves a tab once per id: every autosave
+  refreshes the library, and re-resolving mid-edit swaps `published` under someone who
+  is typing, which is what decides whether the button says publish or update.
+- **Adoption confirms before it deletes.** `AdoptLocalTabs` uploads every local tab,
+  *re-reads the account*, and only removes the local copy of what it finds there. A
+  write that reports success but does not land would otherwise take the only copy with
+  it. It is safe to run again because the tab keeps its id and `(owner, id)` is the
+  primary key.
+- **Signing in is one action, because there is one provider.** Google, and only Google.
+  No email field, no password, no handle, and no login/signup pair — for someone who has
+  never been here those are the same door. The handle is derived by
+  `handle_new_user` from the email's local part, de-duplicated with a number, and read
+  back out of `profiles` rather than guessed in the client: the second `tomas.v.girao` is
+  `tomas.v.girao1`, and guessing shows them somebody else's name.
+- **`SessionSync` is the only thing that writes `useSession`.** One subscription, in the
+  layout, so a sign-in in another tab or an expiring token reaches the whole app. Two
+  places asking Supabase who is signed in is two answers to one question. Its callback
+  defers with `setTimeout(…, 0)` on purpose — calling back into the client from inside
+  an `onAuthStateChange` notification can deadlock on the client's own lock.
+- **E2E is pinned to the no-accounts configuration** (`playwright.config.ts` sets both
+  Supabase variables empty). Whoever runs it may have `.env.local` configured, and the
+  suite would otherwise test a different app than it does on a clean clone while reaching
+  a real server. `E2E_ACCOUNTS=1` lets the real configuration through, on purpose;
+  nothing committed depends on it, because Google's consent screen cannot be driven
+  headlessly and a test that pretends otherwise only ever passes.
+- **Row-level security is where the content rule is enforced, not the query.** One policy
+  per table, both directions, `auth.uid() = owner`. "Nothing a user makes is visible to
+  another user" holds even when a query forgets its filter — and a user's tabs must never
+  become a `TabProvider`, because `searchAllProviders` fans out across providers and
+  takes its `provider` from the client.
 - **E2E runs with `TAB_PROVIDERS=local`** (set in `playwright.config.ts`) so it is
   deterministic and offline. Songsterr is gone; `local` is the only provider today.
 

@@ -2,14 +2,17 @@
 
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CommandLine } from "@/components/chrome/command-line";
 import { TabGrid } from "@/components/editor/tab-grid";
 import { TranscribeControls } from "@/components/editor/transcribe-controls";
 import { PlaybackBar } from "@/components/tab/playback-bar";
+import { useFollowCursor } from "@/hooks/use-follow-cursor";
+import { useLibrary } from "@/hooks/use-library";
 import { useTabPlayback } from "@/hooks/use-tab-playback";
 import { appendBlock, blankStave, validateTab } from "@/lib/tab/edit";
-import { type Draft, useDrafts } from "@/stores/drafts";
+import { MINE_PROVIDER } from "@/lib/tabs/contract";
+import type { Draft } from "@/stores/drafts";
 
 const TUNINGS: Record<string, string[]> = {
   standard: ["E", "A", "D", "G", "B", "E"],
@@ -28,8 +31,7 @@ function tuningName(tuning: string[] | null) {
 
 export function TabEditor({ draft: initial }: { draft: Draft }) {
   const router = useRouter();
-  const upsert = useDrafts((s) => s.upsert);
-  const remove = useDrafts((s) => s.remove);
+  const library = useLibrary();
 
   const [draft, setDraft] = useState<Draft>(initial);
   const [saved, setSaved] = useState(false);
@@ -41,34 +43,31 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
     draft.tuning,
     draft.capo ?? 0,
   );
-  const activeStaveRef = useRef<HTMLDivElement>(null);
+  const activeStaveRef = useFollowCursor(parsed.blocks, playing ? column : -1);
 
   const issues = useMemo(() => validateTab(draft.content), [draft.content]);
-
-  // Follow the cursor by scrolling to whichever stave holds it. Not optional:
-  // a cursor you cannot see is not a cursor.
-  useEffect(() => {
-    if (!playing) return;
-    const el = activeStaveRef.current;
-    if (!el) return;
-    const y = el.getBoundingClientRect().top + window.scrollY - 130;
-    window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-  }, [playing]);
 
   const patch = (next: Partial<Draft>) => {
     setDraft((d) => ({ ...d, ...next }));
     setSaved(false);
   };
 
-  // Autosave, so a closed tab never costs someone their work.
+  /**
+   * Autosave, so a closed tab never costs someone their work.
+   *
+   * Longer when it is a network write than when it is a line in localStorage:
+   * typing a stave would otherwise be a request per keystroke-and-a-bit.
+   */
   useEffect(() => {
     if (!draft.title && !draft.content) return;
-    const timer = setTimeout(() => {
-      upsert(draft);
-      setSaved(true);
-    }, 600);
+    const timer = setTimeout(
+      () => {
+        void library.save(draft).then(() => setSaved(true));
+      },
+      library.remote ? 1200 : 600,
+    );
     return () => clearTimeout(timer);
-  }, [draft, upsert]);
+  }, [draft, library.save, library.remote]);
 
   /** Add a stave at the end, which is where a tab grows. */
   const append = (text: string) => {
@@ -78,6 +77,12 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
   const strings = draft.tuning?.length === 4 ? 4 : 6;
   const canSave = draft.title.trim().length > 0 && parsed.blocks.length > 0;
 
+  // Whether this tab has been published before is the whole difference between
+  // the two things this screen can be: writing a new tab, or coming back to one
+  // through `edit`. It is read from the draft as it arrived, not from state, so
+  // the word cannot change under someone mid-edit.
+  const existing = initial.published;
+
   // Leaving the page has to silence the guitar; the audio graph outlives the
   // component that started it.
   const leave = (to: Route) => {
@@ -86,21 +91,28 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
   };
 
   /**
-   * Nothing is published any more, so this is a save that also stops editing.
-   * `published` survives as the flag that decides whether a tab shows up in
-   * search — collapsing it into "there is only one kind of tab" is Etapa 3.
+   * Publishing puts the tab in your library — it is what `published` gates, and
+   * what makes it findable from the prompt. Updating an existing one is the
+   * same write; autosave has already stored the words, so what this really does
+   * is stop editing and open the tab.
+   *
+   * It ends on the reading screen rather than staying here, because that screen
+   * is the tab: whoever just wrote it should see what they made, with `edit`
+   * one key away if it is not right yet.
    */
-  const save = () => {
+  const save = async () => {
     const next = { ...draft, published: true };
-    upsert(next);
     setDraft(next);
-    leave(`/draft/${draft.id}` as Route);
+    // Awaited, unlike autosave: the very next screen reads this tab back, and
+    // racing it shows someone the version before the one they just published.
+    await library.save(next);
+    leave(`/song/${MINE_PROVIDER}/${draft.id}` as Route);
   };
 
   return (
     <>
       <main className="mx-auto max-w-[980px] px-[22px] pb-[140px] pt-7">
-        <CommandLine>tab --new</CommandLine>
+        <CommandLine>{existing ? "tab --edit" : "tab --new"}</CommandLine>
         <p className="mt-1 mb-7 text-[11px] text-term-faint">
           tabs live in this browser until there is an account to keep them in.
           {saved ? " saved." : ""}
@@ -223,11 +235,11 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
         <div className="mt-8 flex flex-wrap items-center gap-3 text-[12px]">
           <button
             type="button"
-            onClick={save}
+            onClick={() => void save()}
             disabled={!canSave}
             className="border border-term-fg px-3 py-[7px] enabled:hover:border-term-accent enabled:hover:text-term-accent disabled:cursor-not-allowed disabled:border-term-line disabled:text-term-faint"
           >
-            save
+            {existing ? "update" : "publish"}
           </button>
           {!canSave && (
             <span className="text-[11px] text-term-faint">needs a title and something to show</span>
@@ -236,12 +248,14 @@ export function TabEditor({ draft: initial }: { draft: Draft }) {
           <button
             type="button"
             onClick={() => {
-              remove(draft.id);
-              leave("/" as Route);
+              void library.remove(draft.id).then(() => leave("/" as Route));
             }}
             className="text-[11px] text-term-faint hover:text-term-accent"
           >
-            discard
+            {/* Reaching the editor through `edit` means this button can now
+                destroy something that exists, which "discard" does not warn
+                anyone about. */}
+            {existing ? "delete" : "discard"}
           </button>
         </div>
       </main>

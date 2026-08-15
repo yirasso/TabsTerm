@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BARS_PER_STAVE, CELL_WIDTH, COLUMNS_PER_BAR } from "./grid";
-import { barAtColumn, isPlayable, parseTabNotes, STANDARD_TUNING } from "./parse-notes";
+import {
+  barAtColumn,
+  isPlayable,
+  parseTabNotes,
+  STANDARD_TUNING,
+  staveAtColumn,
+} from "./parse-notes";
 
 // Every line is 11 characters: the `e|` label plus nine of stave.
 const STAVE = `e|--0--3--|
@@ -225,6 +231,36 @@ describe("barAtColumn", () => {
   it("stays on the last bar once the cursor runs past the end", () => {
     // Playback keeps ticking after the final note, and "bar 5 / 4" is a lie.
     expect(barAtColumn(parsed, parsed.totalColumns * 2)).toBe(parsed.totalBars);
+  });
+});
+
+describe("staveAtColumn", () => {
+  const parsed = parseTabNotes(`${HOUSE_STAVE}\n\nsome words\n\n${HOUSE_STAVE}`);
+  const staves = parsed.blocks.filter((b) => b.kind === "stave");
+
+  it("is nothing while playback is stopped", () => {
+    expect(staveAtColumn(parsed.blocks, -1)).toBeNull();
+  });
+
+  it("moves to the next stave as the cursor leaves the one before", () => {
+    const first = staves[0];
+    const second = staves[1];
+    expect(staveAtColumn(parsed.blocks, 0)?.id).toBe(first?.id);
+    expect(staveAtColumn(parsed.blocks, HOUSE_WIDTH - 1)?.id).toBe(first?.id);
+    // The crossing the autoscroll hangs on: one column later it is a different
+    // stave, and a different id, which is what makes the page follow.
+    expect(staveAtColumn(parsed.blocks, HOUSE_WIDTH)?.id).toBe(second?.id);
+  });
+
+  it("skips the prose between them, which has no cursor to hold", () => {
+    const ids = parsed.blocks.filter((b) => b.kind === "text").map((b) => b.id);
+    for (let column = 0; column < parsed.totalColumns; column++) {
+      expect(ids).not.toContain(staveAtColumn(parsed.blocks, column)?.id);
+    }
+  });
+
+  it("is nothing once the cursor runs past the end", () => {
+    expect(staveAtColumn(parsed.blocks, parsed.totalColumns * 2)).toBeNull();
   });
 });
 
