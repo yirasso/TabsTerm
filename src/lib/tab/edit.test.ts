@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { blankStave, insertAt, staveLabels, validateTab } from "./edit";
-import { CELL_WIDTH } from "./grid";
+import { CELL_WIDTH, COLUMNS_PER_BAR } from "./grid";
 
 describe("staveLabels", () => {
   it("uses standard labels when no tuning is declared", () => {
@@ -36,6 +36,14 @@ describe("blankStave, on the grid", () => {
   it("emits whole cells, so a new stave is already square", () => {
     const body = (blankStave().split("\n")[0] ?? "").slice(2).replace(/\|/g, "");
     expect(body.length % CELL_WIDTH).toBe(0);
+  });
+
+  it("writes bars the player counts as bars", () => {
+    // A bar drawn every eight positions while the counter reads sixteen put two
+    // bars on the page and one on the clock.
+    const bars = (blankStave().split("\n")[0] ?? "").slice(2).split("|").filter(Boolean);
+    expect(bars).toHaveLength(2);
+    for (const bar of bars) expect(bar.length).toBe(COLUMNS_PER_BAR * CELL_WIDTH);
   });
 });
 

@@ -190,15 +190,14 @@ export function TabGrid({
         const holdsCursor = local >= 0 && local < block.width;
 
         return (
-          // `items-start`: the control belongs to the whole stave, so it sits
-          // level with its first string rather than floating beside the middle
-          // one.
-          <div
-            key={block.id}
-            ref={holdsCursor ? activeRef : undefined}
-            className="mb-4 flex items-start gap-3"
-          >
-            <div className="min-w-0 flex-1 overflow-x-auto">
+          // The control sits above the stave rather than beside it, because a
+          // stave is as wide as the page will allow and a gutter for one word
+          // would cost it a bar.
+          <div key={block.id} ref={holdsCursor ? activeRef : undefined} className="mb-4">
+            <div className="flex justify-end">
+              <Remove block={block} what="stave" />
+            </div>
+            <div className="overflow-x-auto">
               {grid.cells.map((row, line) => (
                 // Stave lines have no identity beyond their order in the stave,
                 // and that order is fixed.
@@ -248,7 +247,6 @@ export function TabGrid({
                 </div>
               ))}
             </div>
-            <Remove block={block} what="stave" />
           </div>
         );
       })}

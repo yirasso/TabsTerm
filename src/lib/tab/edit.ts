@@ -4,7 +4,7 @@
  * square. Pure functions, so the editor stays a thin shell over them.
  */
 
-import { CELL_WIDTH } from "./grid";
+import { CELL_WIDTH, COLUMNS_PER_BAR } from "./grid";
 
 /** String labels, high string first, matching how tab lines are stacked. */
 const GUITAR_LABELS = ["e", "B", "G", "D", "A", "E"];
@@ -23,14 +23,20 @@ export function staveLabels(tuning: string[] | null, strings = 6): string[] {
   return highFirst.map((note, i) => (i === 0 ? note.toLowerCase() : note.toUpperCase()));
 }
 
-/** Positions per bar — kept in step with the generator's grid. */
-const POSITIONS_PER_BAR = 8;
-
-/** An empty stave, ready to be filled in, already on the two-character grid. */
+/**
+ * An empty stave, ready to be filled in, already on the grid.
+ *
+ * Two bars, at `COLUMNS_PER_BAR` positions each — one full line of writing at
+ * the width the page gives it, rather than a stub in the left half. It used to
+ * be two bars of eight, which was also half as wide as it should have been and,
+ * worse, disagreed with the player: the bar counter reads `COLUMNS_PER_BAR`, so
+ * a stave with its own idea of a bar made the counter say one bar where the
+ * writer could see two.
+ */
 export function blankStave(tuning: string[] | null = null, strings = 6, bars = 2): string {
   const labels = staveLabels(tuning, strings);
   const width = Math.max(1, bars);
-  const bar = "-".repeat(POSITIONS_PER_BAR * CELL_WIDTH);
+  const bar = "-".repeat(COLUMNS_PER_BAR * CELL_WIDTH);
   return labels.map((label) => `${label}|${`${bar}|`.repeat(width)}`).join("\n");
 }
 

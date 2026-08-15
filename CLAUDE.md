@@ -76,6 +76,10 @@ npm run check     # typecheck + biome + vitest
   the line sideways — so do not add a raw text box back without deciding what happens
   when the two disagree. There is no `align grid` button: writing a cell rewrites the
   whole stave at a fixed width, so touching a ragged stave anywhere squares it.
+- **A written bar and a counted bar must be the same bar.** `blankStave` lays bar lines
+  every `COLUMNS_PER_BAR` positions because the playback bar counts by that constant. It
+  used to use eight of its own, so a stave showed two bars while the counter said one —
+  and was half as wide as the page allowed. `+ stave` now fills the column at 980px.
 - **With no text box, anything not reachable from the grid is unreachable, full stop.**
   A section name is an input and every block carries a `remove`; each edit splices by
   `block.firstLine`/`lineCount` from `parseTabNotes`, never by searching the content —
