@@ -28,7 +28,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f2efe8",
+  // `--tt-bg` of the crt theme, which is the default. It tints the browser's
+  // own chrome on mobile, so a light value here framed a dark page in white.
+  themeColor: "#0e1319",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

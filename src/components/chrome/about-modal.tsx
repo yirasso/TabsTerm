@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { AUTHOR_URL } from "@/lib/links";
 import { useUi } from "@/stores/ui";
 
 const MAN_PAGE = `NAME
@@ -12,18 +13,13 @@ DESCRIPTION
   query, the tab. Type a song, open it, play. Slash commands
   for everything else — type / to see them.
 
-READING
-  [space] plays the tab on a digital guitar and walks a
-  cursor along it in time. [f] clears the page down to the
-  stave, [t] cycles the theme, [esc] goes back. Tablature
-  never scrolls sideways: a stave is two bars, and two bars
-  is what the column fits.
-
 WRITING
   /new is a grid, not a text box — every position is a cell
   three characters wide, so a fret replaces a cell instead
   of pushing the line out of true. Record or upload one
-  guitar and it comes back as a draft to correct.
+  guitar and it comes back as tablature to correct.
+
+  Writing needs an account; reading needs nothing.
 
   Your tabs are yours: nothing you write is published or
   shown to anyone else, the audio never leaves this browser,
@@ -86,7 +82,7 @@ export function AboutModal() {
           </div>
           <div className="flex flex-wrap gap-2.5">
             <a
-              href="https://github.com/yirasso"
+              href={AUTHOR_URL}
               target="_blank"
               rel="noreferrer noopener"
               className="whitespace-nowrap border border-term-line px-3 py-2 text-[12px] text-term-fg hover:border-term-accent hover:text-term-accent"

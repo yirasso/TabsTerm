@@ -172,6 +172,33 @@ test("the digital guitar plays a tab and walks a cursor across it", async ({ pag
   await expect(page.locator('[data-testid="tab-cursor"]')).toHaveCount(0);
 });
 
+test("the header offers the repo, and opens it away from the app", async ({ page }) => {
+  await page.goto("/");
+
+  const star = page.getByRole("link", { name: /star this repo/i });
+  await expect(star).toHaveAttribute("href", /github\.com/);
+  // Leaving the site in the same tab would drop whatever was being read, and
+  // `noopener` is what stops the opened page from reaching back through
+  // `window.opener`.
+  await expect(star).toHaveAttribute("target", "_blank");
+  await expect(star).toHaveAttribute("rel", /noopener/);
+});
+
+test("the man page documents writing, and no longer a focus mode that is gone", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+  await prompt.fill("/man");
+  await prompt.press("Enter");
+
+  const dialog = page.getByRole("dialog", { name: "man tabsterm" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(/WRITING/)).toBeVisible();
+  await expect(dialog.getByText(/READING/)).toHaveCount(0);
+  await expect(dialog.getByText(/clears the page down to the stave/i)).toHaveCount(0);
+});
+
 test("with no account server, the modal says so instead of offering a dead button", async ({
   page,
 }) => {
@@ -273,14 +300,17 @@ test("a client cannot switch on a source the server disabled", async ({ request 
 test("the idle prompt shows the day's quote, and typing replaces it", async ({ page }) => {
   await page.goto("/");
 
-  const fortune = page.getByRole("blockquote");
-  await expect(page.getByText("$ fortune")).toBeVisible();
-  await expect(fortune).toBeVisible();
+  const quote = page.getByRole("blockquote");
+  await expect(quote).toBeVisible();
   // Server-rendered, so it carries an attribution from the first byte.
-  await expect(fortune.locator("footer")).toContainText("—");
+  await expect(quote.locator("footer")).toContainText("—");
+
+  // No `$ fortune` above it: nobody ran that command, and labelling the one
+  // quiet thing on the screen as output made it read as noise.
+  await expect(page.getByText("$ fortune")).toHaveCount(0);
 
   await page.getByLabel("search for a song").fill("greensleeves");
-  await expect(fortune).toBeHidden();
+  await expect(quote).toBeHidden();
 });
 
 test("/list shows the whole library on the results screen", async ({ page }) => {
@@ -372,8 +402,21 @@ test("the wordmark goes home from a tab, too", async ({ page }) => {
   await expect(page.getByLabel("search for a song")).toBeVisible();
 });
 
-test("the theme button cycles themes", async ({ page }) => {
+test("everyone arrives on crt, and the header no longer offers a switch", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /theme: paper/ }).click();
+
   await expect(page.locator("html")).toHaveAttribute("data-theme", "crt");
+  await expect(page.getByRole("button", { name: /theme/i })).toHaveCount(0);
+});
+
+test("the theme is still reachable, from the prompt", async ({ page }) => {
+  // Taking the button out must not strand the setting. `/theme` is the way in
+  // from here; `t` is the way in from a tab, where the prompt is not eating
+  // the keystroke.
+  await page.goto("/");
+  const prompt = page.getByLabel("search for a song");
+
+  await prompt.fill("/theme");
+  await prompt.press("Enter");
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", "crt");
 });

@@ -416,17 +416,21 @@ export function TerminalApp({ quote }: { quote?: Quote }) {
   );
 }
 
-/** The idle prompt's fortune: one quote, the same for everyone, all day. */
+/**
+ * One quote, the same for everyone, all day.
+ *
+ * It carries no `$ fortune` line above it. The command was never run — the
+ * quote is just there when the prompt is empty — and labelling it as output
+ * from something nobody typed made the screen's one quiet moment look busier
+ * than it is.
+ */
 function DailyQuote({ quote }: { quote: Quote }) {
   return (
     <div className="py-[5px]">
-      <div className="text-[11px] text-term-faint">
-        <span className="text-term-accent">$</span> fortune
-      </div>
       {/* The accent carries the quotation marks rather than a rule down the
-          side; the prompt above owns the loud move on this screen and the
-          fortune should read like something worth stopping for, not an alert. */}
-      <blockquote className="mt-3 max-w-[68ch]">
+          side; the prompt above owns the loud move on this screen and this
+          should read like something worth stopping for, not an alert. */}
+      <blockquote className="max-w-[68ch]">
         <p className="text-[16px] text-term-fg leading-[1.55]">
           <span className="text-term-accent">“</span>
           {quote.text}

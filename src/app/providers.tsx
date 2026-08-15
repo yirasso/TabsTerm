@@ -27,7 +27,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <ThemeProvider
         attribute="data-theme"
         themes={[...THEME_ORDER]}
-        defaultTheme="paper"
+        defaultTheme="crt"
         enableSystem={false}
         disableTransitionOnChange
       >
