@@ -84,6 +84,14 @@ ninth fret: a two-digit fret either pushes everything after it out of line or
 silently swallows the next time position. Two characters is enough to fix that,
 but leaves a `12` touching the next one; the third keeps a dash after every fret.
 
+A stave is `BARS_PER_STAVE` bars wide — two, or 100 characters, which is what the
+980px reading column fits at 15px monospace. `blankStave` and `notesToAscii` both
+read that constant and `setCell` cannot widen a stave, so **tablature never
+scrolls sideways**: the property is enforced where staves are written rather than
+patched in the reader, because a reader that wrapped would be breaking bars to
+hide a layout mistake. The shipped library is pinned to it by a test — it used to
+be laid out seventeen positions to the bar, and scrolled.
+
 `normaliseGrid` in `src/lib/tab/grid.ts` re-lays ragged tab onto the grid and is
 idempotent. `regrid` is its dangerous sibling, for content written at a *known
 different* width — changing `CELL_WIDTH` needs it for the shipped library

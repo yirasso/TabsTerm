@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { CELL_WIDTH, normaliseGrid, regrid } from "./grid";
+import { CELL_WIDTH, COLUMNS_PER_BAR, normaliseGrid, rebar, regrid } from "./grid";
+
+/** A stave line of `bars` bars, each `positions` positions long. */
+const barsOf = (positions: number, bars = 2) =>
+  `e|${`${"-".repeat(positions * CELL_WIDTH)}|`.repeat(bars)}`;
 
 const staveLines = (content: string) =>
   content.split("\n").filter((line) => /^[A-Ga-g]\|/.test(line));
@@ -172,5 +176,29 @@ play it softly`;
   it("is a no-op when the width has not moved", () => {
     const already = regrid(OLD, 2);
     expect(regrid(already, CELL_WIDTH)).toBe(already);
+  });
+});
+
+describe("rebar", () => {
+  it("cuts a long bar down to the house bar", () => {
+    const out = rebar(barsOf(COLUMNS_PER_BAR + 1));
+    expect(out).toBe(barsOf(COLUMNS_PER_BAR));
+  });
+
+  it("leaves a bar that is already the house bar alone", () => {
+    const already = barsOf(COLUMNS_PER_BAR);
+    expect(rebar(already)).toBe(already);
+  });
+
+  it("refuses to drop a position that carries a note", () => {
+    // The whole point of the check: trimming a layout mistake is fine, editing
+    // the music to make a layout mistake go away is not.
+    const line = `e|${"-".repeat(COLUMNS_PER_BAR * CELL_WIDTH)}7--|`;
+    expect(() => rebar(line)).toThrow(/notes past/);
+  });
+
+  it("leaves prose and labels alone", () => {
+    const text = "[intro]\nplay it softly";
+    expect(rebar(text)).toBe(text);
   });
 });

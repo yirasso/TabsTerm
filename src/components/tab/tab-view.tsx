@@ -69,8 +69,12 @@ export function TabView({ tab, backHref }: { tab: Tab; backHref: Route }) {
 
   return (
     <>
+      {/* 980px, because that is what a stave measures: two bars of sixteen
+          positions at three characters each, plus the string label and the
+          border this page draws down the left of it. A narrower reading column
+          looked calmer and made every tab scroll sideways, which is not calm. */}
       <main
-        className={`mx-auto px-[22px] pb-[140px] pt-7 ${focusMode ? "max-w-[1100px]" : "max-w-[900px]"}`}
+        className={`mx-auto px-[22px] pb-[140px] pt-7 ${focusMode ? "max-w-[1100px]" : "max-w-[980px]"}`}
       >
         {!focusMode && (
           <CommandLine>

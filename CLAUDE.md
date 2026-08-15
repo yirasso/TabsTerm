@@ -80,6 +80,15 @@ npm run check     # typecheck + biome + vitest
   every `COLUMNS_PER_BAR` positions because the playback bar counts by that constant. It
   used to use eight of its own, so a stave showed two bars while the counter said one —
   and was half as wide as the page allowed. `+ stave` now fills the column at 980px.
+- **Tablature never scrolls sideways, and that is enforced where staves are written.**
+  `BARS_PER_STAVE` (`src/lib/tab/grid.ts`) is how wide a stave may be — two bars, 100
+  characters, what a 980px column fits at 15px monospace. `blankStave` and `notesToAscii`
+  both read it, `setCell` cannot widen a stave, and `src/data/seed-tabs.test.ts` pins the
+  shipped library, so nothing in the product can produce a wider one. The reader does not
+  wrap: wrapping would break bars to hide a layout mistake. Both reading columns are
+  sized to the stave — do not narrow `max-w-[980px]` in `tab-view.tsx`, and do not give
+  `.tab-content` letter-spacing, because the playback cursor is placed in `ch` and any
+  tracking drifts it a character every thirty columns.
 - **With no text box, anything not reachable from the grid is unreachable, full stop.**
   A section name is an input and every block carries a `remove`; each edit splices by
   `block.firstLine`/`lineCount` from `parseTabNotes`, never by searching the content —

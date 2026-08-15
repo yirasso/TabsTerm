@@ -62,8 +62,13 @@ export function TabRender({
               />
             )}
             {/* The tablature is the artifact, not a code sample. At 13px it
-                read like a footnote to its own page. */}
-            <pre className="tab-content relative text-[15px] leading-[1.85] tracking-[0.02em]">
+                read like a footnote to its own page.
+
+                No letter-spacing: the cursor above is placed in `ch`, and any
+                tracking makes a character advance more than one `ch`, so the
+                bar drifts a little further right with every column it crosses —
+                three characters out by the end of a stave. */}
+            <pre className="tab-content relative text-[15px] leading-[1.85]">
               {block.lines.join("\n")}
             </pre>
           </div>

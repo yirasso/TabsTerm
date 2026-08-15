@@ -133,6 +133,23 @@ test("every stave line ends in the same place", async ({ page }) => {
   expect(new Set(widths).size).toBe(1);
 });
 
+test("a stave fits the reading column, so tablature never scrolls sideways", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/song/local/canon-in-d");
+
+  // A stave that has to be dragged left and right is unreadable — the whole
+  // point of the fixed grid is counting straight down a column. The column is
+  // sized to a stave rather than the stave squeezed into the column.
+  const overflow = await page.evaluate(() =>
+    [...document.querySelectorAll("main pre.tab-content")].map(
+      (el) => el.scrollWidth - el.clientWidth,
+    ),
+  );
+
+  expect(overflow.length).toBeGreaterThan(0);
+  for (const over of overflow) expect(over).toBe(0);
+});
+
 test("the digital guitar plays a tab and walks a cursor across it", async ({ page }) => {
   await page.goto("/song/local/greensleeves");
 

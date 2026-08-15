@@ -26,6 +26,19 @@ export const CELL_WIDTH = 3;
  */
 export const COLUMNS_PER_BAR = 16;
 
+/**
+ * Bars on one stave — and therefore how wide any stave in this product is
+ * allowed to be.
+ *
+ * Two bars is `2 * (16 * 3 + 1) + 2` = 100 characters, which is what the 980px
+ * reading column fits at 15px monospace. Everything that writes a stave reads
+ * this: the editor's `+ stave`, the transcriber's line breaks, and the shipped
+ * library through a test. That is the whole of "tablature never scrolls
+ * sideways" — it is enforced where staves are written, because a reader that
+ * wraps to fix it would be breaking bars to hide a layout mistake.
+ */
+export const BARS_PER_STAVE = 2;
+
 const STAVE_LINE = /^\s*[A-Ga-g][#b]?\s*\|/;
 /** Everything up to and including the label's bar. */
 const LABEL = /^(\s*[A-Ga-g][#b]?\s*\|)/;
@@ -182,6 +195,48 @@ export function normaliseGrid(content: string): string {
  * Needed once per change to `CELL_WIDTH`, for content that outlived it: the
  * shipped library, and drafts sitting in someone's browser.
  */
+/**
+ * Cut every bar down to `COLUMNS_PER_BAR` positions.
+ *
+ * For staves written to somebody else's idea of a bar — the shipped library was
+ * laid out seventeen positions to the bar, which is neither the bar this player
+ * counts nor a width the reading column fits.
+ *
+ * Throws rather than truncate anything written on. A bar longer than the house
+ * bar is a layout mistake to correct; if the extra positions carry notes it is
+ * not a layout mistake at all, and silently dropping them would edit the music.
+ */
+export function rebar(content: string): string {
+  const cells = (segment: string) => segment.match(new RegExp(`.{1,${CELL_WIDTH}}`, "g")) ?? [];
+
+  return content
+    .split(/\r?\n/)
+    .map((line, index) => {
+      if (!STAVE_LINE.test(line)) return line;
+
+      const label = LABEL.exec(line)?.[1] ?? "";
+
+      const bars = line
+        .slice(label.length)
+        .split("|")
+        .map((segment) => {
+          const all = cells(segment);
+          const kept = all.slice(0, COLUMNS_PER_BAR);
+          const dropped = all.slice(COLUMNS_PER_BAR);
+
+          if (dropped.some((cell) => /[^-]/.test(cell))) {
+            throw new Error(
+              `line ${index + 1}: bar of ${all.length} positions has notes past ${COLUMNS_PER_BAR}`,
+            );
+          }
+          return kept.join("");
+        });
+
+      return label + bars.join("|");
+    })
+    .join("\n");
+}
+
 export function regrid(content: string, fromWidth: number): string {
   if (fromWidth === CELL_WIDTH) return content;
 

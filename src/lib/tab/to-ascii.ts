@@ -5,10 +5,8 @@
 
 import { staveLabels } from "./edit";
 import type { FrettedNote } from "./fretting";
-import { CELL_WIDTH, COLUMNS_PER_BAR } from "./grid";
+import { BARS_PER_STAVE, CELL_WIDTH, COLUMNS_PER_BAR } from "./grid";
 import { type Tempo, toStep } from "./tempo";
-
-const BARS_PER_LINE = 2;
 
 export type AsciiOptions = {
   tuning: string[];
@@ -42,9 +40,9 @@ export function notesToAscii(notes: FrettedNote[], options: AsciiOptions): strin
 
   const staves: string[] = [];
 
-  for (let bar = 0; bar < totalBars; bar += BARS_PER_LINE) {
+  for (let bar = 0; bar < totalBars; bar += BARS_PER_STAVE) {
     const from = bar * COLUMNS_PER_BAR;
-    const to = Math.min(totalBars, bar + BARS_PER_LINE) * COLUMNS_PER_BAR;
+    const to = Math.min(totalBars, bar + BARS_PER_STAVE) * COLUMNS_PER_BAR;
 
     const lines = labels.map((label, string) => {
       // Fixed-width cells: `0-`, `12` and `--` all measure the same, so a wide
