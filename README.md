@@ -1,216 +1,322 @@
-# GTabsTerm (TabsTerm)
+<div align="center">
 
-Search a song, get its guitar tablature. Terminal-flavoured, no popups, no ad walls.
+# TabsTerm
 
-The UI implements the **TabsTerm** design from Claude Design (project
-"TabsTerm – Plataforma de tabs", `TabsTerm.dc.html`): a text prompt with ghost-typing,
-four themes (paper / crt / amber / mono) with CRT scanlines, slash commands,
-keyboard-first navigation, and a tab view with a playback bar
-(play / bar counter / bpm).
+**Somewhere to make your own guitar tablature, and keep it.**
+
+Not a catalogue to read — a workshop to write in. Play something into your
+microphone and get tablature back. Correct it position by position on a grid
+that cannot fall out of line. Then press space and hear a guitar play it.
+
+![The TabsTerm prompt](docs/images/prompt.png)
+
+</div>
+
+---
+
+# Part 1 — What it is
+
+## One prompt, and the tab
+
+No ads. No autoplay video. No wall of lyrics you have to scroll past. No login
+to read anything. You type, and you get tablature.
+
+Everything happens through one text prompt. Type a song name to search it; type
+a slash to see what else there is.
+
+| Command | What it does |
+| ------- | ------------ |
+| `/new`  | write a tab, by hand or from audio |
+| `/list` | every tab you have |
+| `/rand` | open one at random |
+| `/man`  | what TabsTerm is |
+| `/theme`| cycle the theme |
+
+Tab completes them the way a shell does — `/ra` then Tab finishes to `/rand`,
+and pressing Tab again walks the rest of the list.
+
+![The library on the results screen](docs/images/library.png)
+
+## The tab plays
+
+A tab here is not a text file. Press `space` and a digital guitar plays it back
+while a cursor walks the stave in time with the sound. The page follows the
+cursor from one stave to the next, so you can keep both hands on the
+instrument.
+
+The bar counter, the tempo and the notes all come from the same reading of the
+tab, so the cursor can never sit on a note the player is not about to play. Slow
+it down with `-`, speed it up with `+`.
+
+![Canon in D playing, with the cursor on the stave](docs/images/reader.png)
+
+## Three ways to make one
+
+**Play it into the microphone.** Pick up the guitar, hit record, play, hit stop.
+The recording is analysed in your browser and comes back as a draft: notes
+placed on a rhythmic grid, each one assigned to a real string and fret, with the
+capo worked out from what it heard.
+
+**Upload a recording you already have.** Same path, no microphone needed.
+
+**Write it by hand.** Every position on the stave is a button. Click it and type
+a fret.
+
+![The editor, with a stave being written](docs/images/editor.png)
+
+That last one is the part most tab editors get wrong. Here a fret *replaces* a
+fixed-width cell instead of being typed into a line, so a two-digit fret can
+never push the strings below it out of column. The grid cannot break, because
+there is no way to write into it that would break it. There is no raw text box
+to fall out of sync with.
+
+Tablature also never scrolls sideways. A stave is two bars wide, which is
+exactly what the reading column fits — so you read down a column instead of
+dragging a page left and right.
+
+## Four themes
+
+Paper, CRT, amber and mono. `t` cycles them from anywhere.
+
+| | |
+|---|---|
+| **paper** | **crt** |
+| ![paper](docs/images/theme-paper.png) | ![crt](docs/images/theme-crt.png) |
+| **amber** | **mono** |
+| ![amber](docs/images/theme-amber.png) | ![mono](docs/images/theme-mono.png) |
+
+Monospace here is functional, not a costume: tablature only reads if every
+character is the same width.
+
+## Your work is yours
+
+**Nothing you make is ever published.** Every tab belongs to the account that
+made it and is visible to nobody else. There is no sharing, no public link, no
+feed. That is the design, not a missing feature.
+
+It is also what makes the rest possible. Ultimate Guitar and Songsterr are
+catalogues that exist because they pay publishers, which is why they can only
+show you what they have cleared. A private workshop has no such wall: you can
+transcribe a recording you own, for yourself, because that is personal use
+rather than distribution.
+
+**Your audio never leaves your browser.** The analysis runs on your own machine.
+Only the resulting tablature is stored — the server never fetches, downloads or
+holds a recording.
+
+**Nothing here is scraped.** No other site's tab database was copied to fill
+this one. The five example pieces that ship with it are hand-written
+transcriptions of public-domain and traditional works, each with its
+provenance, so there is something to hear and something to edit on the first
+visit.
+
+## Keyboard first
+
+| | |
+| --- | --- |
+| `enter` | run what is in the prompt |
+| `tab` / `shift+tab` | complete a command, forwards or back |
+| `↑ ↓` or `j k` | move the selection |
+| `esc` | back |
+| `space` | play or stop, on a tab |
+| `e` | edit, on a tab that is yours |
+| `t` | cycle the theme, anywhere |
+
+Playback is sound, so nothing depends on hearing it — the moving cursor carries
+the same information on screen.
+
+---
+
+# Part 2 — For developers
+
+## Run it
+
+```bash
+npm install
+npm run dev
+```
+
+That is the whole setup. It boots on `:3000` with five tabs in the library, no
+account server and no configuration — drafts live in `localStorage`.
+
+| Script | |
+| ------ | --- |
+| `npm run dev` | dev server on `:3000` |
+| `npm run build` | production build |
+| `npm run check` | typecheck + lint + unit tests |
+| `npm run test:e2e` | Playwright, boots its own dev server |
+| `npm run lint:fix` | Biome autofix + import sorting |
+
+Formatting is Biome, not Prettier or ESLint. Run `npm run lint:fix` before
+committing.
+
+## Configuration
+
+Copy `.env.example` to `.env.local`. Every variable is parsed by Zod at boot
+(`src/lib/env.ts`), so a bad value fails immediately with a readable message
+rather than at the first request.
+
+Accounts are optional. With neither Supabase variable set, the app runs exactly
+as it does above — which is how the e2e suite runs and how a fresh clone builds.
+Setting **one without the other throws at startup**: a half-configured
+deployment would keep everyone's tabs in a browser while its operator believed
+there were accounts.
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+Both are public by design — the anon key is meant to ship to browsers. What
+protects the data is row-level security, one policy per table in both
+directions, in `supabase/migrations/`.
 
 ## Stack
 
-| Layer         | Choice                                        | Why |
-| ------------- | --------------------------------------------- | --- |
-| Framework     | Next.js 16 (App Router, Turbopack)            | RSC, streaming, route handlers, typed routes |
-| Runtime       | React 19.2 + React Compiler                   | Auto-memoization; no manual `useMemo` churn |
-| Language      | TypeScript (strict, `noUncheckedIndexedAccess`) | |
-| Styling       | Tailwind CSS v4 (`@theme` tokens)             | Tokens live in one file; restyling is a token edit |
-| Data fetching | TanStack Query                                | Cache, dedupe, abort on the client |
-| URL state     | nuqs                                          | `q` and `view` live in the URL — shareable |
-| Theming       | next-themes                                   | `data-theme` on `<html>`: paper / crt / amber / mono |
-| Validation    | Zod v4                                        | Env, API boundaries, upstream responses |
-| Client state  | Zustand                                       | Mock account, modal state, and local drafts |
-| Accounts      | Supabase (`@supabase/ssr`), optional          | OAuth sign-in + owner-only Postgres; absent, the app runs on localStorage |
-| Motion        | Motion (Framer) + GSAP + Lenis                | Layout/gesture animation, timelines, smooth scroll |
-| 3D            | three + React Three Fiber + drei + postprocessing | Ready for an awwwards-grade WebGL layer |
-| Lint / format | Biome                                         | One fast binary instead of ESLint + Prettier |
-| Unit tests    | Vitest + Testing Library                      | |
-| E2E           | Playwright                                    | |
+| Layer | Choice | Why |
+| ----- | ------ | --- |
+| Framework | Next.js 16 (App Router, Turbopack) | RSC, streaming, route handlers, typed routes |
+| Runtime | React 19.2 + React Compiler | Auto-memoization; no manual `useMemo` churn |
+| Language | TypeScript (strict, `noUncheckedIndexedAccess`) | |
+| Styling | Tailwind CSS v4 (`@theme` tokens) | Tokens live in one file; restyling is a token edit |
+| Data fetching | TanStack Query | Cache, dedupe, abort on the client |
+| URL state | nuqs | `q` and `view` live in the URL — shareable |
+| Theming | next-themes | `data-theme` on `<html>`: paper / crt / amber / mono |
+| Validation | Zod v4 | Env, API boundaries, upstream responses |
+| Client state | Zustand | Session, modal state, local drafts |
+| Accounts | Supabase (`@supabase/ssr`), optional | OAuth sign-in + owner-only Postgres |
+| Audio | Basic Pitch (Spotify) + TensorFlow.js | Note detection, in the browser |
+| Playback | Web Audio, Karplus–Strong synthesis | A plucked string, without a sample pack |
+| Lint / format | Biome | One fast binary instead of ESLint + Prettier |
+| Unit tests | Vitest + Testing Library | |
+| E2E | Playwright | |
 
-> The 3D and motion packages are installed but not imported anywhere yet, so they add
-> nothing to the bundle. Drop `three`, `@react-three/*` and `gsap` if the design pass
-> ends up not needing them.
+Motion and 3D packages (`gsap`, `motion`, `lenis`, `three`, `@react-three/*`)
+are installed but imported nowhere, so they cost nothing until a design pass
+needs them.
 
-## Commands
+## Layout
+
+```
+src/
+  app/
+    page.tsx                        the terminal — home and results screens
+    song/[provider]/[id]/page.tsx   the reader; `mine` reads the browser's own store
+    new/page.tsx                    the editor; `?id=` resumes, and is where `edit` lands
+    random/page.tsx                 307s to a tab picked on the server
+    auth/callback/route.ts          trades the OAuth code for a session cookie
+    api/search|tabs|tab/…           JSON, for the client and for no-JS
+    globals.css                     theme tokens (--tt-*) + term-* utilities
+  components/
+    chrome/                         header, modals, theme cycle
+    terminal/                       prompt, ghost typer, slash commands, screens
+    editor/                         the cell grid and the transcribe controls
+    tab/                            reader, playback bar, block renderer
+  hooks/                            playback, autoscroll, the library
+  lib/
+    tab/                            grid, cells, parser, ASCII writer, fretting
+    audio/                          decode, transcribe, synthesise
+    tabs/contract.ts                domain model + Zod schemas + TabProvider
+    supabase/                       config (optional) + browser / server clients
+  server/tabs/                      `server-only`; imports the contract, never the reverse
+    registry.ts                     fan-out, dedupe, graceful degradation
+    providers/local.ts              the tabs committed to this repo
+  data/seed-tabs.ts                 the shipped library
+  stores/                           zustand: session, ui, drafts
+  proxy.ts                          refreshes the Supabase session before rendering
+supabase/migrations/                schema, with owner-only RLS from the first line
+```
+
+It is `src/proxy.ts`, not `middleware.ts` — Next 16 deprecated that name and
+errors if both exist, while every Supabase guide still says middleware. It has
+to be there: a Server Component cannot set cookies, so without a proxy
+refreshing the token before render you get random logouts.
+
+## The parts worth knowing
+
+**The grid is the whole design.** Every notation position is `CELL_WIDTH`
+characters wide (3), so `0--`, `12-` and `---` all measure the same. One
+character per position — the usual convention — breaks above the ninth fret: a
+two-digit fret either pushes everything after it out of line or silently eats
+the next time position. Two characters fixes that but leaves `12` touching the
+next `12`; the third keeps a dash after every fret.
+
+`CELL_WIDTH` is not a constant you can edit. Three things follow it:
+`COLUMNS_PER_BEAT`, the shipped library (`node scripts/normalise-seeds.ts --from
+<old>`), and the drafts store's persist `version` plus a `regrid` migration for
+tabs already in someone's browser. Use `regrid` for that, never `normaliseGrid`
+— the latter reads every *character* column as a position and doubles the length
+of the piece.
+
+**A stave is `BARS_PER_STAVE` bars, and that is enforced where staves are
+written.** Two bars, 100 characters, what a 980px column fits at 15px monospace.
+`blankStave` and `notesToAscii` both read it, `setCell` cannot widen a stave,
+and a test pins the shipped library. The reader deliberately does not wrap:
+wrapping would break bars to hide a layout mistake.
+
+**A blank line between staves is structure, not spacing.** A stave is a *run* of
+consecutive stave lines, so two written back to back are one twelve-string stave
+that falls back to a six-string tuning and plays half of itself. `appendBlock`
+keeps the line when a tab grows; `removeLines` keeps it when a block between two
+staves is deleted.
+
+**A fret number is not a pitch.** Tab is written relative to the capo, so
+anything that sounds a note has to add the capo to the open string.
+`parseTabNotes(content, tuning, capo)` does it, and every caller has to pass it.
+Transcription runs `detectCapo` *before* `assignFrets` for the same reason — the
+capo decides which neck the notes are being placed on.
+
+**Tab data never lives in components.** Sources implement `TabProvider`
+(`src/lib/tabs/contract.ts`) and are registered in `src/server/tabs/registry.ts`.
+A new source is a file in `providers/` plus an entry in `TAB_PROVIDERS`.
+`searchAllProviders` may only *narrow* that list with the client's `?provider=`,
+never widen it — otherwise anyone could switch on a source the operator turned
+off. There is an e2e test pinning that.
+
+**Design tokens are the `--tt-*` variables in `src/app/globals.css`**, one block
+per theme. The `@theme inline` block maps them to `term-*` utilities and
+components reference those names, never raw colours. Note that `@theme inline`
+does not emit the custom property — anything hand-written CSS reads back with
+`var(--token)` has to live in a plain `@theme` block instead.
+
+## Testing
 
 ```bash
-npm run dev          # dev server on :3000
-npm run build        # production build
-npm run check        # typecheck + lint + unit tests
-npm run test:e2e     # Playwright (boots its own dev server, pinned to no accounts)
-npm run lint:fix     # Biome autofix + import sorting
+npm run check        # typecheck, lint, unit tests
+npm run test:e2e     # Playwright
 ```
+
+The e2e suite is pinned to the **no-accounts** configuration
+(`playwright.config.ts` sets both Supabase variables empty) so it tests the same
+app on a clean clone as it does on a machine with a populated `.env.local`. It
+also runs with `TAB_PROVIDERS=local`, so it is deterministic and offline.
+
+The account rules have their own spec, skipped unless you ask for it, because
+Google's consent screen cannot be driven headlessly:
 
 ```bash
 E2E_ACCOUNTS=1 npx playwright test e2e/accounts.spec.ts
 ```
 
-Runs the account rules against whatever `.env.local` points at, instead of the empty
-Supabase configuration the committed suite is pinned to. Skipped without the flag.
+## Contributing
 
-## Architecture
+Issues and pull requests are welcome. Two things are not open for negotiation,
+because the project's legal position rests on them:
 
-```
-src/
-  app/
-    page.tsx                        the terminal (home / results screens)
-    song/[provider]/[id]/page.tsx   tab view (server-fetched; `mine` reads localStorage)
-    new/page.tsx                    the editor — `?id=` resumes, and is where `edit` lands
-                                    (needs an account where one is configured)
-    auth/callback/route.ts          trades the OAuth code for a session cookie
-    api/search/route.ts             GET /api/search?q=
-    api/tabs/route.ts               GET /api/tabs — the whole library
-    api/tab/[provider]/[id]/route.ts
-    globals.css                     theme tokens (--tt-*) + term-* utilities
-  components/
-    chrome/                         header, about/auth modals, theme cycle
-    terminal/                       prompt, ghost typer, slash commands, screens
-    tab/                            tab view, playback bar, block renderer
-  stores/                           zustand: session (mock user) + ui + drafts
-  hooks/                            client data hooks
-  proxy.ts                          refreshes the Supabase session before rendering
-  lib/
-    env, http, cn/slugify
-    tabs/contract.ts                domain model + Zod schemas + TabProvider interface
-    supabase/                       config (optional) + browser / `server-only` clients
-supabase/migrations/                schema; owner-only RLS from the first line
-  server/tabs/                      `server-only`; imports the contract, never the reverse
-    registry.ts                     fan-out, dedupe, graceful degradation
-    providers/
-      local.ts                      tabs committed to this repo
-  data/seed-tabs.ts                 the local library
-```
+1. **Nothing a user makes may become visible to another user.** Sharing, public
+   links, feeds, exports that someone else receives — any of these turns a
+   private transcription into distribution and reopens the whole copyright
+   question.
+2. **No scraping another site's tablature**, private or not, and **no
+   server-side audio**. Analysis stays in the browser.
 
-### Keyboard
+---
 
-`enter` run · `tab` complete (`shift+tab` backwards) · `↑ ↓` / `j k` move ·
-`esc` back · on a tab: `space` play · `e` edit (your own tabs) ·
-`t` theme (anywhere).
+## License
 
-Slash commands: `/new`, `/list`, `/rand`, `/man`, `/theme`. None takes an argument —
-typing anything that is not a command searches.
+Copyright © 2026 Tomas Girao. **All rights reserved.**
 
-**The grid.** Every notation position is `CELL_WIDTH` characters wide (3), so `0--`, `12-` and
-`---` all measure the same and a reader can count positions straight down a
-column. One character per position — the usual convention — breaks above the
-ninth fret: a two-digit fret either pushes everything after it out of line or
-silently swallows the next time position. Two characters is enough to fix that,
-but leaves a `12` touching the next one; the third keeps a dash after every fret.
-
-A stave is `BARS_PER_STAVE` bars wide — two, or 100 characters, which is what the
-980px reading column fits at 15px monospace. `blankStave` and `notesToAscii` both
-read that constant and `setCell` cannot widen a stave, so **tablature never
-scrolls sideways**: the property is enforced where staves are written rather than
-patched in the reader, because a reader that wrapped would be breaking bars to
-hide a layout mistake. The shipped library is pinned to it by a test — it used to
-be laid out seventeen positions to the bar, and scrolled.
-
-`normaliseGrid` in `src/lib/tab/grid.ts` re-lays ragged tab onto the grid and is
-idempotent. `regrid` is its dangerous sibling, for content written at a *known
-different* width — changing `CELL_WIDTH` needs it for the shipped library
-(`node scripts/normalise-seeds.ts --from 2`) and for drafts already in a browser
-(a persist `version` bump in `src/stores/drafts.ts`). Reaching for `normaliseGrid`
-there instead doubles the length of the piece, because it reads every character
-column as a position.
-
-**The editor edits cells, not characters.** `/new` draws each position as a
-button you click and type a fret into (`tab-grid.tsx`, over the cell model in
-`src/lib/tab/cells.ts`). Because a fret replaces a fixed-width cell rather than
-being inserted into a line, a two-digit fret cannot push the strings below it out
-of column — the alignment problem is gone by construction rather than corrected
-after the fact. There is no raw text box.
-
-Which is why every block has to be reachable from the grid itself: prose and
-staves each carry their own `remove`. `parseTabNotes` gives every block a
-`firstLine` and `lineCount` for exactly this, so an edit splices the lines it is
-already looking at instead of searching the content for text that may appear
-twice.
-
-**A blank line between staves is structure.** A stave is a run of consecutive
-stave lines, so two written back to back are a single twelve-string stave that
-falls back to a six-string tuning and plays half of itself. `appendBlock` keeps
-that line when a tab grows and `removeLines` keeps it when a block sitting
-between two staves is deleted.
-
-**There are no sections.** `[Intro]` is not punctuation the parser knows — a
-bracketed line is prose like any other, and there is no `+ section`. Prose blocks
-remain, because chord names written above a stave are what they are for.
-
-**Guitar tablature only.** `tabTypeSchema` has a single member: no chord sheets,
-no bass, no ukulele. It stays an enum so one of those can come back as an added
-member rather than a field re-threaded through the schema, the editor and the
-UI — and since a single value says nothing, it is not displayed anywhere.
-
-**Tab completion** works the way a shell's does, and lives in
-`src/components/terminal/completion.ts` as pure functions. `/ra` + Tab finishes to
-`/rand`; repeated Tabs cycle the candidates and Shift+Tab walks back, so a bare
-`/` walks the whole list. No command takes an argument, so there is no second
-step — the shell's complete-the-word-then-complete-its-value behaviour left with
-the last command that had a value, and returns with the next one that does.
-
-**Which sources are searched is the operator's decision**, made once in
-`TAB_PROVIDERS`. There is no reader-facing filter: `/api/search` still accepts
-`?provider=`, and the registry can only *narrow* `TAB_PROVIDERS` with it — a
-client must never be able to switch on a source the operator turned off — but
-nothing in the UI sets it, so every search asks the same question.
-
-**`/list`** shows the whole library on the results screen. It is the same screen
-as a search, because the question behind the rows is the only difference: with
-nothing in the prompt, everything matched. That also makes `/?view=results` a
-shareable link to the library. Listing is not "search for an empty string" —
-searching needs a minimum length so the first keystroke does not fire a request,
-and listing has no query at all, so they are separate endpoints (`/api/tabs`) and
-a separate optional `list()` on `TabProvider`.
-
-**`/rand`** draws a tab from the sources that can enumerate their own catalog.
-That is an optional `random()` on `TabProvider`: a search-only upstream simply
-omits it and gets skipped, rather than having an id guessed for it. The pick
-happens on the server behind the `/random` route, so it is also a
-plain shareable link, and it redirects (307) to the chosen song. Narrowing to a
-source that cannot be browsed renders an honest "nothing to draw from" page
-instead of failing.
-
-**The idle prompt shows the day's quote** (`$ fortune`), picked from
-`src/data/quotes.ts` by UTC day. It is chosen on the server and the home page is
-ISR with `revalidate = 3600`, so the quote is in the first byte of HTML, cannot
-mismatch on hydration, and rotates daily.
-
-### Tab sources
-
-Sources implement one interface (`TabProvider` in `src/lib/tabs/contract.ts`) and are
-enabled through the `TAB_PROVIDERS` env var. `searchAllProviders` queries them in
-parallel with `Promise.allSettled`: a source that is down lands in `degraded` and the
-UI says so, instead of the whole search failing.
-
-- **`local`** — tablature committed to the repo (`src/data/seed-tabs.ts`). Always
-  available, works offline, and is what the tests run against. Currently five
-  traditional / public-domain pieces.
-
-`local` is the only provider today. A Songsterr one existed and was removed; the
-fan-out and `degraded` machinery is what survives of it, and it is not worth
-adding to. See [docs/PLAN.md](docs/PLAN.md) — the product is a private workshop
-now, so the content that matters is what each user writes, not what a source can
-be persuaded to hand over.
-
-To add a source: write `src/server/tabs/providers/<name>.ts`, register it in
-`registry.ts`, add its id to `TAB_PROVIDERS`.
-
-## Environment
-
-Copy `.env.example` to `.env.local`. Every variable is parsed by Zod at boot
-(`src/lib/env.ts`) — a bad value fails fast with a readable message.
-
-## Design
-
-The visual layer comes from the Claude Design project "TabsTerm – Plataforma de tabs".
-When adjusting it:
-
-- All theme values are the `--tt-*` variables at the top of `src/app/globals.css`
-  (one block per theme). The `@theme inline` block maps them to `term-*` utilities —
-  components only ever use those names.
-- The mock auth modal is client-side only by design ("no login required to read
-  anything"). Favorites were removed with the public catalogue: they only meant
-- Do not put fetching or provider logic in components — it belongs in `src/server/tabs/`.
-- `.tab-content` must keep `white-space: pre` and a monospace font. ASCII tablature is a
-  fixed-width grid; if it reflows, it is wrong.
+Source-available, not open source. You may use it, study it, modify it and share
+it — see [LICENSE](LICENSE) for the exact terms. You may **not** sell it or
+anything built from it, and you may **not** present it as your own work. For a
+commercial license, open an issue.

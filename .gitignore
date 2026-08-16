@@ -50,10 +50,18 @@ next-env.d.ts
 # copied from node_modules at build time
 /public/models/
 
-# impeccable design tooling — transient state only. .impeccable/config.json is
-# meant to be shared and stays tracked if it ever gets written.
-/.impeccable/questions/
-/.impeccable/mocks/
-/.impeccable/review/
-/.impeccable/hook.cache.json
-/.impeccable/config.local.json
+# Personal working files: editor settings, AI assistant instructions, design
+# tooling and planning notes. None of it is needed to install, run, test or
+# build the app — it describes how one person works, not what the project is.
+/.vscode/
+/.idea/
+/.claude/
+/.cursor/
+/.impeccable/
+.cursorrules
+.windsurfrules
+.aider*
+CLAUDE.md
+AGENTS.md
+PRODUCT.md
+/docs/PLAN.md

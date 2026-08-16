@@ -1,0 +1,79 @@
+TabsTerm License
+
+Copyright (c) 2026 Tomas Girao. All rights reserved.
+
+This software is source-available, not open source. The copyright in it stays
+with the author. The permissions below are the only ones granted; anything not
+granted here is reserved.
+
+1. WHAT YOU MAY DO
+
+   You may, free of charge:
+
+   a) Use this software, privately or publicly, for any purpose that is not
+      commercial as defined in section 2.
+   b) Read, study and learn from the source code.
+   c) Modify it, and run your modified version under the same conditions.
+   d) Share it, modified or unmodified, provided you keep this license file
+      and the copyright notice intact, and provided the recipient receives it
+      under this same license.
+   e) Contribute changes back to the author.
+
+2. WHAT YOU MAY NOT DO
+
+   a) NO SELLING. You may not sell, license, rent, lease, sublicense or
+      otherwise charge for this software or any work derived from it, and you
+      may not include it in any product or service that is sold or monetised.
+      "Monetised" includes subscriptions, advertising, paid hosting, and
+      offering it as a paid or ad-supported service. This applies to the
+      software whether modified or not, in whole or in part.
+
+   b) NO CLAIMING AUTHORSHIP. You may not present this software, or any work
+      derived from it, as your own creation. You may not remove, alter or
+      obscure the copyright notice, this license, or the authorship of the
+      original work; you may not relicense it; and you may not register any
+      copyright, patent or trademark over it or over anything derived from it.
+      If you publish a modified version you must state clearly that it is
+      based on TabsTerm by Tomas Girao, link to the original where a link is
+      possible, and mark what you changed.
+
+   c) NO REMOVING THESE TERMS. You may not distribute this software or any
+      derivative of it under terms that grant more than this license grants.
+
+3. COMMERCIAL USE
+
+   Commercial use is not granted here. If you want it, ask the author — a
+   separate written license is the only way to obtain it.
+
+4. CONTRIBUTIONS
+
+   By submitting a contribution to this project you agree that it is licensed
+   to the author under these same terms, and that the author may use it in
+   this project without further obligation to you. You keep the copyright in
+   what you wrote.
+
+5. THE TABLATURE IN THIS REPOSITORY
+
+   The five example tabs in `src/data/seed-tabs.ts` are hand-written
+   transcriptions of public-domain and traditional pieces, and each carries its
+   own provenance. They are covered by this license as part of the software.
+   Nothing in this license grants any right in any musical work that is not in
+   the public domain.
+
+6. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+7. TERMINATION
+
+   If you breach this license, the permissions in section 1 end automatically.
+   They are restored if you fix the breach within 30 days of becoming aware of
+   it, unless the author has already notified you of the breach.
+
+Questions, or a request for a commercial license: open an issue on the project's
+repository.
