@@ -129,6 +129,8 @@ the same information on screen.
 
 # Part 2 — For developers
 
+[![CI](https://github.com/yirasso/TabsTerm/actions/workflows/ci.yml/badge.svg)](https://github.com/yirasso/TabsTerm/actions/workflows/ci.yml)
+
 ## Run it
 
 ```bash
@@ -301,6 +303,13 @@ Google's consent screen cannot be driven headlessly:
 ```bash
 E2E_ACCOUNTS=1 npx playwright test e2e/accounts.spec.ts
 ```
+
+All three — `check`, a production build, and the e2e suite — run on GitHub
+Actions for every push and every pull request
+(`.github/workflows/ci.yml`). The build gets its own job because `npm run check`
+never compiles the app, and a production build fails in ways dev does not. A
+failing e2e run uploads its HTML report, traces included, as an artifact on the
+run.
 
 ## Contributing
 

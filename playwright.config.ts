@@ -9,7 +9,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? "github" : "list",
+  /**
+   * On CI, both: `github` annotates the failing line in the diff, `html` writes
+   * the report the workflow uploads. The annotation says what broke; the report
+   * carries the trace of the retry, which is the only way to see a flake after
+   * the runner is gone.
+   */
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,
     trace: "on-first-retry",

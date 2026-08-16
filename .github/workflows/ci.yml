@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Read-only: this workflow reports, it never writes to the repository.
+permissions:
+  contents: read
+
+# A second push to the same branch makes the first run's answer worthless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The three run in parallel rather than in sequence. A failing typecheck would
+  # fail the other two as well, but a contributor gets all three answers in the
+  # time of the slowest instead of one at a time.
+  check:
+    name: typecheck · lint · unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  build:
+    name: production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # `npm run check` never compiles the app. A production build fails in ways
+      # dev does not — a client hook reached from a server component, a page that
+      # cannot be prerendered — so it is worth its own minute.
+      - run: npm run build
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # No environment is set here on purpose. playwright.config.ts pins
+      # TAB_PROVIDERS=local and empties the Supabase pair for the server it
+      # starts, so CI runs the same offline, account-free app a clean clone
+      # does. It already reads CI itself for retries, workers and reporter.
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
