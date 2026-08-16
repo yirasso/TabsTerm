@@ -234,6 +234,10 @@ refreshing the token before render you get random logouts.
 
 ## The parts worth knowing
 
+A handful of decisions here look arbitrary until you know what went wrong
+without them. The short version is below; [CLAUDE.md](CLAUDE.md) has the full
+list, each rule with the failure that put it there.
+
 **The grid is the whole design.** Every notation position is `CELL_WIDTH`
 characters wide (3), so `0--`, `12-` and `---` all measure the same. One
 character per position — the usual convention — breaks above the ninth fret: a

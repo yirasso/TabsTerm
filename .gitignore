@@ -61,7 +61,10 @@ next-env.d.ts
 .cursorrules
 .windsurfrules
 .aider*
-CLAUDE.md
 AGENTS.md
 PRODUCT.md
 /docs/PLAN.md
+
+# CLAUDE.md is deliberately NOT ignored. It is the one working note worth
+# sharing: the rules a contributor would otherwise have to rediscover, each
+# with the failure that put it there.
