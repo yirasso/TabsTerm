@@ -2,6 +2,17 @@
   "name": "gtabsterm",
   "version": "0.1.0",
   "private": true,
+  "description": "Somewhere to make your own guitar tablature, and keep it. A terminal-flavoured, keyboard-first workshop: transcribe a recording in the browser, correct it on a grid that cannot fall out of line, and hear a guitar play it back.",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Tomas Girao",
+  "homepage": "https://github.com/yirasso/TabsTerm#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yirasso/TabsTerm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yirasso/TabsTerm/issues"
+  },
   "scripts": {
     "copy:models": "node scripts/copy-models.mjs",
     "predev": "npm run copy:models",

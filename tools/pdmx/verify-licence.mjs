@@ -14,9 +14,10 @@
  */
 import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
+import { at } from "./paths.mjs";
 
-const FRETTED = JSON.parse(readFileSync("C:/Dev/_pdmx/pilot-fretted.json", "utf8")).rows;
-const OUT = "C:/Dev/_pdmx/pilot-licence.json";
+const FRETTED = JSON.parse(readFileSync(at("pilot-fretted.json"), "utf8")).rows;
+const OUT = at("pilot-licence.json");
 
 /** Life+70 clears in 2026 for anyone who died in 1955 or earlier. */
 const PD_DEATH_YEAR = 1955;

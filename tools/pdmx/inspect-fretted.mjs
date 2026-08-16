@@ -8,9 +8,10 @@
 import { globSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import * as alphaTab from "@coderline/alphatab";
+import { at } from "./paths.mjs";
 
-const INDEX = JSON.parse(readFileSync("C:/Dev/_pdmx/usable-index.json", "utf8"));
-const OUT = "C:/Dev/_pdmx/pilot-fretted.json";
+const INDEX = JSON.parse(readFileSync(at("usable-index.json"), "utf8"));
+const OUT = at("pilot-fretted.json");
 
 /** Tuning fingerprints, low string last as alphaTab reports them. */
 const FAMILIES = [
@@ -27,8 +28,8 @@ const SUSPECT_GENRE = /rock|pop|soundtrack|electronic|hiphop|rnb|metal|country|r
 
 const rows = [];
 
-for (const file of globSync("C:/Dev/_pdmx/extracted/mxl/**/*.mxl")) {
-  const rel = file.replace(/\\/g, "/").replace("C:/Dev/_pdmx/extracted/", "");
+for (const file of globSync(at("extracted/mxl/**/*.mxl"))) {
+  const rel = file.replace(/\\/g, "/").replace(`${at("extracted")}/`, "");
   const meta = INDEX[rel] ?? {};
   let score;
   try {

@@ -97,8 +97,16 @@ not the 100% its licence column claims.
 
 ## Data
 
-Downloads live in `C:\Dev\_pdmx` (outside the repo, 1.9 GB archive + 1,439
-extracted scores). Artefacts: `pilot-metadata.json`, `pilot-scores.json`,
+Downloads live outside the repository — a 1.9 GB archive plus 1,439 extracted
+scores, none of it committed. Every script here resolves that working set
+through `tools/pdmx/paths.mjs`: set `PDMX_ROOT`, or leave it and it looks for a
+`_pdmx` folder beside the repository.
+
+```bash
+PDMX_ROOT=/data/pdmx node tools/pdmx/analyze-metadata.mjs
+```
+
+Artefacts written there: `pilot-metadata.json`, `pilot-scores.json`,
 `pilot-fretted.json`, `pilot-licence.json`, `usable-index.json`.
 
 Only `mxl.tar.gz`, `PDMX.csv` and `subset_paths.tar.gz` were fetched — `pdf`

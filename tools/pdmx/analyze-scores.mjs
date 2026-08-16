@@ -9,12 +9,12 @@
 import { globSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import * as alphaTab from "@coderline/alphatab";
+import { at } from "./paths.mjs";
 
-const ROOT = "C:/Dev/_pdmx/extracted/mxl";
-const INDEX = JSON.parse(readFileSync("C:/Dev/_pdmx/usable-index.json", "utf8"));
-const OUT = "C:/Dev/_pdmx/pilot-scores.json";
+const INDEX = JSON.parse(readFileSync(at("usable-index.json"), "utf8"));
+const OUT = at("pilot-scores.json");
 
-const files = globSync(`${ROOT}/**/*.mxl`);
+const files = globSync(at("extracted/mxl/**/*.mxl"));
 
 const stats = {
   files: files.length,
@@ -70,7 +70,7 @@ function fretStats(score) {
 }
 
 for (const [i, file] of files.entries()) {
-  const rel = file.replace(/\\/g, "/").replace("C:/Dev/_pdmx/extracted/", "");
+  const rel = file.replace(/\\/g, "/").replace(`${at("extracted")}/`, "");
   const meta = INDEX[rel] ?? {};
 
   let score;

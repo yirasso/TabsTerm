@@ -1,8 +1,9 @@
 /** Smoke test: can alphaTab read a PDMX .mxl in Node, and what shape comes back? */
 import { globSync, readFileSync } from "node:fs";
 import * as alphaTab from "@coderline/alphatab";
+import { at } from "./paths.mjs";
 
-const files = globSync("C:/Dev/_pdmx/extracted/mxl/**/*.mxl");
+const files = globSync(at("extracted/mxl/**/*.mxl"));
 console.log(`found ${files.length} files, probing the first`);
 
 const bytes = new Uint8Array(readFileSync(files[0]));

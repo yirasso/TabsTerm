@@ -9,9 +9,10 @@ import { createReadStream } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { parse } from "csv-parse";
 import { BASS_PROGRAMS, GUITAR_PROGRAMS, PROGRAM_NAMES, parseTracks } from "./gm.mjs";
+import { at } from "./paths.mjs";
 
-const CSV = process.argv[2] ?? "C:/Dev/_pdmx/PDMX.csv";
-const OUT = "C:/Dev/_pdmx/pilot-metadata.json";
+const CSV = process.argv[2] ?? at("PDMX.csv");
+const OUT = at("pilot-metadata.json");
 
 const isTrue = (v) => v === "True" || v === "true";
 

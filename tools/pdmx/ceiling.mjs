@@ -6,10 +6,11 @@
  *   node tools/pdmx/ceiling.mjs
  */
 import { readFileSync } from "node:fs";
+import { at } from "./paths.mjs";
 
-const INDEX = JSON.parse(readFileSync("C:/Dev/_pdmx/usable-index.json", "utf8"));
+const INDEX = JSON.parse(readFileSync(at("usable-index.json"), "utf8"));
 const FRETTED = new Set(
-  JSON.parse(readFileSync("C:/Dev/_pdmx/pilot-fretted.json", "utf8")).rows.map((r) => r.title),
+  JSON.parse(readFileSync(at("pilot-fretted.json"), "utf8")).rows.map((r) => r.title),
 );
 
 const PD_DEATH_YEAR = 1955;

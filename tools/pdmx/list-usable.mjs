@@ -8,10 +8,11 @@ import { createReadStream } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { parse } from "csv-parse";
 import { GUITAR_PROGRAMS, parseTracks } from "./gm.mjs";
+import { at } from "./paths.mjs";
 
-const CSV = process.argv[2] ?? "C:/Dev/_pdmx/PDMX.csv";
-const OUT_LIST = "C:/Dev/_pdmx/usable-mxl.txt";
-const OUT_INDEX = "C:/Dev/_pdmx/usable-index.json";
+const CSV = process.argv[2] ?? at("PDMX.csv");
+const OUT_LIST = at("usable-mxl.txt");
+const OUT_INDEX = at("usable-index.json");
 
 const isTrue = (v) => v === "True" || v === "true";
 
