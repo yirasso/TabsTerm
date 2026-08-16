@@ -7,9 +7,9 @@
 -- that always fell through, and dead code in a security definer function is
 -- worse than dead code elsewhere, because nobody rereads it.
 --
--- So: the local part of the email. `tomas.v.girao@gmail.com` becomes
--- `tomas.v.girao`, which is handle-shaped already. `full_name` is deliberately
--- not used — "Tomás Girão" makes a poor handle and a worse unique key.
+-- So: the local part of the email. `ada.lovelace@gmail.com` becomes
+-- `ada.lovelace`, which is handle-shaped already. `full_name` is deliberately
+-- not used — "Ada Lovelace" makes a poor handle and a worse unique key.
 --
 -- A second provider would add its key back at the top of the coalesce.
 create or replace function public.handle_new_user()

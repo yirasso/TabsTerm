@@ -29,8 +29,8 @@ export function SessionSync() {
 
     /**
      * The handle comes from `profiles`, not from the email, because the trigger
-     * that made it may have had to de-duplicate: the second `tomas.v.girao` is
-     * `tomas.v.girao1`, and guessing here would show them somebody else's name.
+     * that made it may have had to de-duplicate: the second `ada.lovelace` is
+     * `ada.lovelace1`, and guessing here would show them somebody else's name.
      * The email is the fallback only if that read fails.
      */
     const load = async (id: string, email: string | null) => {

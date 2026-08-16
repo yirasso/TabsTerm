@@ -9,17 +9,17 @@ import { isValidHandle } from "./profile";
  */
 describe("isValidHandle", () => {
   it("accepts what the signup trigger produces", () => {
-    expect(isValidHandle("tomas.v.girao")).toBe(true);
-    expect(isValidHandle("tomas.v.girao1")).toBe(true);
+    expect(isValidHandle("ada.lovelace")).toBe(true);
+    expect(isValidHandle("ada.lovelace1")).toBe(true);
     expect(isValidHandle("user")).toBe(true);
     expect(isValidHandle("a_b-c.d")).toBe(true);
   });
 
   it("refuses anything that is not lowercase", () => {
-    // Handles are compared by eye more than by machine, and `Tomas` next to
-    // `tomas` is two people who look like one.
-    expect(isValidHandle("Tomas")).toBe(false);
-    expect(isValidHandle("TOMAS")).toBe(false);
+    // Handles are compared by eye more than by machine, and `Ada` next to
+    // `ada` is two people who look like one.
+    expect(isValidHandle("Ada")).toBe(false);
+    expect(isValidHandle("ADA")).toBe(false);
   });
 
   it("refuses too short and too long", () => {
